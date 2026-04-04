@@ -22,6 +22,8 @@ import com.evangelidisapps.ttworkoutlog.ui.home.WorkoutEditScreen
 import com.evangelidisapps.ttworkoutlog.ui.home.WorkoutEditViewModel
 import com.evangelidisapps.ttworkoutlog.ui.home.SettingsScreen
 import com.evangelidisapps.ttworkoutlog.ui.home.BodyMeasurementsScreen
+import com.evangelidisapps.ttworkoutlog.ui.home.ProfileScreen
+import com.evangelidisapps.ttworkoutlog.ui.home.ProfileViewModel
 
 private const val ROUTE_AUTH = "auth"
 private const val ROUTE_HOME = "home"
@@ -30,6 +32,7 @@ private const val ARG_WORKOUT_ID = "workoutId"
 private const val ROUTE_WORKOUT_EDIT = "workout_edit"
 private const val ROUTE_SETTINGS = "settings"
 private const val ROUTE_BODY = "body"
+private const val ROUTE_PROFILE = "profile"
 
 @Composable
 fun WorkoutNavGraph(
@@ -107,7 +110,8 @@ fun WorkoutNavGraph(
                     }
                 },
                 onSettings = { navController.navigate(ROUTE_SETTINGS) },
-                onBodyMeasurements = { navController.navigate(ROUTE_BODY) }
+                onBodyMeasurements = { navController.navigate(ROUTE_BODY) },
+                onProfile = { navController.navigate(ROUTE_PROFILE) }
             )
         }
         composable(
@@ -164,6 +168,13 @@ fun WorkoutNavGraph(
         }
         composable(ROUTE_BODY) {
             BodyMeasurementsScreen(onBack = { navController.popBackStack() })
+        }
+        composable(ROUTE_PROFILE) {
+            val profileViewModel: ProfileViewModel = viewModel()
+            ProfileScreen(
+                viewModel = profileViewModel,
+                onBack = { navController.popBackStack() }
+            )
         }
     }
 }
