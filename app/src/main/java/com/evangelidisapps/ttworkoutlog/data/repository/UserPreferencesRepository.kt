@@ -20,6 +20,7 @@ class UserPreferencesRepository(private val context: Context) {
         val DEFAULT_STYLE = stringPreferencesKey("default_style")
         val THEME_MODE = stringPreferencesKey("theme_mode") // "system" | "dark" | "light"
         val DATE_FORMAT = stringPreferencesKey("date_format") // e.g. "dd/MM/yyyy"
+        val WEIGHT_UNIT = stringPreferencesKey("weight_unit") // "kg" | "lbs"
     }
 
     val hasCompletedOnboarding: Flow<Boolean> = context.dataStore.data.map { preferences ->
@@ -51,6 +52,16 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun setDateFormat(format: String) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.DATE_FORMAT] = format
+        }
+    }
+
+    val weightUnit: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.WEIGHT_UNIT] ?: "kg"
+    }
+
+    suspend fun setWeightUnit(unit: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.WEIGHT_UNIT] = unit
         }
     }
 

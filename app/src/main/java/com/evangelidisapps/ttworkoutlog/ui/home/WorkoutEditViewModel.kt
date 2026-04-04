@@ -16,7 +16,9 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.firstOrNull
@@ -67,10 +69,14 @@ class WorkoutEditViewModel(
     private val _state = MutableStateFlow(WorkoutEditState())
     val state = _state.asStateFlow()
 
+    val weightUnit = prefsRepository.weightUnit
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "kg")
+
 init {
         if (!existingWorkoutId.isNullOrBlank()) {
             viewModelScope.launch {
                 val fmt = prefsRepository.dateFormat.firstOrNull() ?: "dd/MM/yyyy"
+                val unit = prefsRepository.weightUnit.firstOrNull() ?: "kg"
                 repository.observeWorkoutWithDetails(existingWorkoutId).firstOrNull()?.let { details ->
                     _state.update { current ->
                         current.copy(
@@ -94,7 +100,7 @@ init {
                                             id = set.id,
                                             setNumber = set.setNumber,
                                             reps = set.reps?.toString().orEmpty(),
-                                            weight = set.weight?.toString().orEmpty(),
+                                            weight = set.weight?.let { kgToDisplayUnit(it, unit) }.orEmpty(),
                                             durationSec = set.durationSec?.toString().orEmpty(),
                                             distanceMeters = set.distanceMeters?.toString().orEmpty(),
                                             calories = set.calories?.toString().orEmpty(),
@@ -219,6 +225,7 @@ init {
         viewModelScope.launch {
             _state.update { it.copy(isSaving = true, errorMessage = null) }
             val fmt = prefsRepository.dateFormat.firstOrNull() ?: "dd/MM/yyyy"
+            val unit = prefsRepository.weightUnit.firstOrNull() ?: "kg"
             runCatching {
                 repository.upsertWithDetails(
                     WorkoutWithDetails(
@@ -255,7 +262,7 @@ init {
                                         workoutExerciseId = exerciseId,
                                         setNumber = setIndex + 1,
                                         reps = set.reps.toIntOrNull(),
-                                        weight = set.weight.toDoubleOrNull(),
+                                        weight = set.weight.toDoubleOrNull()?.let { displayUnitToKg(it, unit) },
                                         durationSec = set.durationSec.toIntOrNull(),
                                         distanceMeters = set.distanceMeters.toIntOrNull(),
                                         calories = set.calories.toIntOrNull(),
@@ -295,6 +302,15 @@ init {
     }
 
     companion object {
+        fun kgToDisplayUnit(kg: Double, unit: String): String {
+            val value = if (unit == "lbs") kg * 2.20462 else kg
+            return if (value == value.toLong().toDouble()) value.toLong().toString()
+                   else "%.1f".format(value)
+        }
+
+        fun displayUnitToKg(value: Double, unit: String): Double =
+            if (unit == "lbs") value * 0.453592 else value
+
         fun isoToDisplay(isoDate: String, pattern: String): String =
             runCatching {
                 LocalDate.parse(isoDate, DateTimeFormatter.ISO_LOCAL_DATE)
