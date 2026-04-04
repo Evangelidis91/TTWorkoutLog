@@ -48,12 +48,14 @@ fun WorkoutEditScreen(
     onBack: () -> Unit
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val weightUnit by viewModel.weightUnit.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.saved) {
         if (state.saved) onSaved(state.workoutId)
     }
 
     WorkoutEditContent(
+        weightUnit = weightUnit,
         state = state,
         onTitleChange = viewModel::updateTitle,
         onNoteChange = viewModel::updateNote,
@@ -79,6 +81,7 @@ fun WorkoutEditScreen(
 @Composable
 private fun WorkoutEditContent(
     state: WorkoutEditState,
+    weightUnit: String = "kg",
     onTitleChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
     onStyleChange: (String) -> Unit,
@@ -190,6 +193,7 @@ private fun WorkoutEditContent(
                     onNoteChange = { onExerciseNoteChange(exercise.id, it) },
                     onMuscleChange = { onExerciseMuscleChange(exercise.id, it) },
                     onSupersetToggle = { onSupersetToggle(exercise.id, it) },
+                    weightUnit = weightUnit,
                     onAddSet = { onAddSet(exercise.id) },
                     onRemoveSet = { setId -> onRemoveSet(exercise.id, setId) },
                     onUpdateSet = { setId, reps, weight, duration, distance, calories, note, type, warmup ->
@@ -258,6 +262,7 @@ fun StyleDropdown(
 @Composable
 private fun ExerciseEditor(
     exercise: EditableExerciseState,
+    weightUnit: String = "kg",
     onRemove: () -> Unit,
     onNameChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
@@ -324,6 +329,7 @@ private fun ExerciseEditor(
                 exercise.sets.forEach { set ->
                     SetEditor(
                         set = set,
+                        weightUnit = weightUnit,
                         onRemove = { onRemoveSet(set.id) },
                         onUpdate = { reps, weight, duration, distance, calories, note, type, warmup ->
                             onUpdateSet(
@@ -349,6 +355,7 @@ private fun ExerciseEditor(
 @Composable
 private fun SetEditor(
     set: EditableSetState,
+    weightUnit: String = "kg",
     onRemove: () -> Unit,
     onUpdate: (
         reps: String?,
@@ -391,7 +398,7 @@ private fun SetEditor(
                 OutlinedTextField(
                     value = set.weight,
                     onValueChange = { onUpdate(null, it, null, null, null, null, null, null) },
-                    label = { Text("Weight") },
+                    label = { Text("Weight ($weightUnit)") },
                     modifier = Modifier.weight(1f)
                 )
             }
