@@ -45,6 +45,7 @@ fun WorkoutNavGraph(
     val workoutsWithDetails by homeViewModel.workoutsWithDetails.collectAsStateWithLifecycle()
     val dateFormat by homeViewModel.dateFormat.collectAsStateWithLifecycle()
     val weightUnit by homeViewModel.weightUnit.collectAsStateWithLifecycle()
+    val distanceUnit by homeViewModel.distanceUnit.collectAsStateWithLifecycle()
 
     // Show nothing while loading auth state
     if (authState.isLoading) {
@@ -121,6 +122,7 @@ fun WorkoutNavGraph(
                 workoutWithDetails = workoutWithDetails,
                 dateFormat = dateFormat,
                 weightUnit = weightUnit,
+                distanceUnit = distanceUnit,
                 onBack = { navController.popBackStack() },
                 onEdit = {
                     navController.navigate("$ROUTE_WORKOUT_EDIT?workoutId=$workoutId")

@@ -50,6 +50,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = "kg"
         )
 
+    val distanceUnit = prefsRepo.distanceUnit
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = "km"
+        )
+
     fun addQuickWorkout(note: String? = null) {
         val today = LocalDate.now()
         viewModelScope.launch {

@@ -72,11 +72,15 @@ class WorkoutEditViewModel(
     val weightUnit = prefsRepository.weightUnit
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "kg")
 
+    val distanceUnit = prefsRepository.distanceUnit
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "km")
+
 init {
         if (!existingWorkoutId.isNullOrBlank()) {
             viewModelScope.launch {
                 val fmt = prefsRepository.dateFormat.firstOrNull() ?: "dd/MM/yyyy"
                 val unit = prefsRepository.weightUnit.firstOrNull() ?: "kg"
+                val distUnit = prefsRepository.distanceUnit.firstOrNull() ?: "km"
                 repository.observeWorkoutWithDetails(existingWorkoutId).firstOrNull()?.let { details ->
                     _state.update { current ->
                         current.copy(
@@ -102,7 +106,7 @@ init {
                                             reps = set.reps?.toString().orEmpty(),
                                             weight = set.weight?.let { kgToDisplayUnit(it, unit) }.orEmpty(),
                                             durationSec = set.durationSec?.toString().orEmpty(),
-                                            distanceMeters = set.distanceMeters?.toString().orEmpty(),
+                                            distanceMeters = set.distanceMeters?.let { metersToDisplayUnit(it, distUnit) }.orEmpty(),
                                             calories = set.calories?.toString().orEmpty(),
                                             isWarmup = set.isWarmup,
                                             note = set.note.orEmpty(),
@@ -226,6 +230,7 @@ init {
             _state.update { it.copy(isSaving = true, errorMessage = null) }
             val fmt = prefsRepository.dateFormat.firstOrNull() ?: "dd/MM/yyyy"
             val unit = prefsRepository.weightUnit.firstOrNull() ?: "kg"
+            val distUnit = prefsRepository.distanceUnit.firstOrNull() ?: "km"
             runCatching {
                 repository.upsertWithDetails(
                     WorkoutWithDetails(
@@ -264,7 +269,7 @@ init {
                                         reps = set.reps.toIntOrNull(),
                                         weight = set.weight.toDoubleOrNull()?.let { displayUnitToKg(it, unit) },
                                         durationSec = set.durationSec.toIntOrNull(),
-                                        distanceMeters = set.distanceMeters.toIntOrNull(),
+                                        distanceMeters = set.distanceMeters.toDoubleOrNull()?.let { displayUnitToMeters(it, distUnit) },
                                         calories = set.calories.toIntOrNull(),
                                         isWarmup = set.isWarmup,
                                         note = set.note.ifBlank { null },
@@ -310,6 +315,14 @@ init {
 
         fun displayUnitToKg(value: Double, unit: String): Double =
             if (unit == "lbs") value * 0.453592 else value
+
+        fun metersToDisplayUnit(meters: Int, unit: String): String {
+            val value = if (unit == "miles") meters / 1609.344 else meters / 1000.0
+            return "%.2f".format(value)
+        }
+
+        fun displayUnitToMeters(value: Double, unit: String): Int =
+            if (unit == "miles") (value * 1609.344).toInt() else (value * 1000).toInt()
 
         fun isoToDisplay(isoDate: String, pattern: String): String =
             runCatching {
