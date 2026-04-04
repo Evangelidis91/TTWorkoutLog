@@ -140,7 +140,7 @@ Defined in `WorkoutNavGraph.kt`:
 ### Data & Stats
 - [ ] Progress charts — line charts for weight lifted, volume, or body weight over time (Vico or MPAndroidChart)
 - [ ] Weekly/monthly volume summary — total sets, reps, tonnage per muscle group
-- [ ] Body measurements tracking — `BodyMeasurementsScreen` exists but is empty; implement weight, body fat %, measurements log with history
+- [x] Body measurements tracking — `BodyMeasurementsScreen` exists but is empty; implement weight, body fat %, measurements log with history
 - [ ] Workout streak / calendar heatmap — visualise consistency
 
 ### UX & Design
@@ -176,7 +176,8 @@ Defined in `WorkoutNavGraph.kt`:
 ### Shipped (continued)
 - Rest timer — `RestTimerViewModel` (Activity-scoped via NavGraph) runs countdown in a coroutine; `AlarmManager.setExactAndAllowWhileIdle` schedules a `TimerFinishedReceiver` broadcast at expiry; receiver posts a high-priority notification even when app is backgrounded; `RestTimerSheet` ModalBottomSheet in WorkoutEditScreen (⏱ button in TopAppBar) shows circular progress, preset chips (30s–5m), Start/Pause/Resume/Reset; notification channel created in `MainActivity.onCreate`; permissions: `VIBRATE`, `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`; runtime POST_NOTIFICATIONS prompt on Android 13+
 - Workout templates — `isTemplate: Boolean` flag on `WorkoutEntity`/`Workout`; `WorkoutRepository.saveAsTemplate()` clones a workout with fresh UUIDs and `isTemplate = true`; `TemplatesScreen` + `TemplatesViewModel` list/delete templates; tapping "Use Template" navigates to `workout_edit?templateId=…`; `WorkoutEditViewModel` pre-fills state from template with new IDs and today's date; "Save as template" icon button (♡) on `WorkoutDetailScreen`; `Templates` entry in nav drawer; DB version 5
-- Body measurements — `BodyMeasurementEntity` (body_measurements table, DB v4→v5); `BodyMeasurementRepository`; `BodyMeasurementsViewModel` + `BodyMeasurementsScreen` with latest summary card, history list, edit/delete, and ModalBottomSheet form (weight, body fat %, muscle mass, BMI, waist/hip/chest/arm/thigh); respects kg/lbs pref
+- Body measurements — `BodyMeasurementEntity` (body_measurements table, DB v4→v5); `BodyMeasurementRepository`; `BodyMeasurementsViewModel` + `BodyMeasurementsScreen` with latest summary card, progress charts, history list, edit/delete, and ModalBottomSheet form (weight, body fat %, muscle mass, BMI, waist/hip/chest/arm/thigh); respects kg/lbs pref
+- Body measurements progress charts — `ProgressChartsCard` + `LineChart` in `ProgressLineChart.kt`; custom Canvas chart (no extra dependency); animated draw-on with 800ms tween; smooth cubic bezier line + gradient fill; metric selector `FilterChip` row (only shows metrics with ≥ 2 data points); delta indicator (first→last change, colour-coded by direction); X-axis date labels, Y-axis value grid; available metrics: Weight, Body Fat %, Muscle, BMI, Waist, Hip, Chest, Arm, Thigh
 - Exercise picker with search — `ExercisePickerSheet` in `WorkoutEditScreen.kt`; searches `CatalogExerciseEntity` via Room LIKE query; `FilterChip` rows for category, equipment, muscle group
 - Exercise detail sheet — `ExerciseDetailSheet` `ModalBottomSheet` layered on top of picker; Coil `AsyncImage` from CDN (`exercises/{id}/0.jpg`), instruction list, `AssistChip`s for level/category/equipment, "Add to Workout" button
 - Muscle group summary on workout — `MuscleGroupSummaryCard` in `WorkoutDetailScreen.kt`; derives distinct muscles from all exercises via `flatMap`/`distinct`; renders `SuggestionChip`s in a `FlowRow`
