@@ -7,6 +7,7 @@ import com.evangelidisapps.ttworkoutlog.data.model.Workout
 import com.evangelidisapps.ttworkoutlog.data.model.WorkoutWithDetails
 import com.evangelidisapps.ttworkoutlog.data.repository.UserPreferencesRepository
 import com.evangelidisapps.ttworkoutlog.data.repository.WorkoutRepository
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.UUID
@@ -14,9 +15,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+data class StreakData(
+    val currentStreak: Int = 0,
+    val longestStreak: Int = 0,
+    val countByDate: Map<LocalDate, Int> = emptyMap(),
+    val thisWeekCount: Int = 0
+)
 
 data class WorkoutFilter(
     val query: String = "",
@@ -96,6 +105,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = "km"
         )
 
+    val streakData = repository.observeWorkouts()
+        .map { computeStreakData(it) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = StreakData()
+        )
+
     // ── Filter actions ────────────────────────────────────────────────────────
 
     fun setSearchQuery(query: String) = _filter.update { it.copy(query = query) }
@@ -137,5 +154,35 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.saveAsTemplate(workoutId)
         }
+    }
+
+    private fun computeStreakData(workouts: List<Workout>): StreakData {
+        val countByDate = workouts
+            .mapNotNull { runCatching { LocalDate.parse(it.dateLabel) }.getOrNull() }
+            .groupingBy { it }
+            .eachCount()
+
+        // Current streak: count back from today; if today is empty try from yesterday
+        fun streakBackFrom(start: LocalDate): Int {
+            var n = 0; var d = start
+            while (countByDate.containsKey(d)) { n++; d = d.minusDays(1) }
+            return n
+        }
+        val today = LocalDate.now()
+        val current = streakBackFrom(today).let { if (it > 0) it else streakBackFrom(today.minusDays(1)) }
+
+        // Longest streak across history
+        var longest = 0; var run = 0; var prev: LocalDate? = null
+        for (d in countByDate.keys.sorted()) {
+            run = if (prev != null && d == prev!!.plusDays(1)) run + 1 else 1
+            if (run > longest) longest = run
+            prev = d
+        }
+
+        // This week (Mon–today)
+        val weekStart = today.with(DayOfWeek.MONDAY)
+        val thisWeek = countByDate.entries.count { it.key in weekStart..today }
+
+        return StreakData(current, longest, countByDate, thisWeek)
     }
 }

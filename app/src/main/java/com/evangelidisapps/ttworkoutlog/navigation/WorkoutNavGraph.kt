@@ -61,6 +61,7 @@ fun WorkoutNavGraph(
     val dateFormat by homeViewModel.dateFormat.collectAsStateWithLifecycle()
     val weightUnit by homeViewModel.weightUnit.collectAsStateWithLifecycle()
     val distanceUnit by homeViewModel.distanceUnit.collectAsStateWithLifecycle()
+    val streakData by homeViewModel.streakData.collectAsStateWithLifecycle()
 
     // Show nothing while loading auth state
     if (authState.isLoading) {
@@ -99,6 +100,7 @@ fun WorkoutNavGraph(
                 isSignedIn = authState.isSignedIn,
                 isGuest = authState.isGuest,
                 workouts = filteredWorkouts,
+                streakData = streakData,
                 dateFormat = dateFormat,
                 filter = filter,
                 onSearchQueryChange = homeViewModel::setSearchQuery,
