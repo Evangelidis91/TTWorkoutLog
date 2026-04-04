@@ -1,6 +1,7 @@
 package com.evangelidisapps.ttworkoutlog.ui.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,13 +27,19 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -243,7 +250,24 @@ private fun ExerciseCard(exercise: WorkoutExercise, weightUnit: String = "kg", d
 
             if (exercise.sets.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
-                SetsTable(sets = exercise.sets, weightUnit = weightUnit, distanceUnit = distanceUnit)
+                var selectedSet by remember { mutableStateOf<WorkoutSet?>(null) }
+                SetsTable(
+                    sets = exercise.sets,
+                    weightUnit = weightUnit,
+                    distanceUnit = distanceUnit,
+                    onSetTap = { set ->
+                        if (set.weight != null && set.reps != null && set.reps > 0) {
+                            selectedSet = set
+                        }
+                    }
+                )
+                selectedSet?.let { set ->
+                    OneRepMaxBottomSheet(
+                        set = set,
+                        weightUnit = weightUnit,
+                        onDismiss = { selectedSet = null }
+                    )
+                }
             }
         }
     }
@@ -268,11 +292,17 @@ private fun SupersetBadge() {
 }
 
 @Composable
-private fun SetsTable(sets: List<WorkoutSet>, weightUnit: String = "kg", distanceUnit: String = "km") {
+private fun SetsTable(
+    sets: List<WorkoutSet>,
+    weightUnit: String = "kg",
+    distanceUnit: String = "km",
+    onSetTap: (WorkoutSet) -> Unit = {}
+) {
     val hasWeight = sets.any { it.weight != null }
     val hasReps = sets.any { it.reps != null }
     val hasDuration = sets.any { it.durationSec != null }
     val hasDistance = sets.any { it.distanceMeters != null }
+    val has1RM = sets.any { it.weight != null && it.reps != null && it.reps > 0 }
 
     Column {
         // Table header
@@ -283,6 +313,7 @@ private fun SetsTable(sets: List<WorkoutSet>, weightUnit: String = "kg", distanc
             if (hasWeight) TableCell(text = weightUnit.uppercase(), weight = 0.2f, isHeader = true)
             if (hasDuration) TableCell(text = "TIME", weight = 0.25f, isHeader = true)
             if (hasDistance) TableCell(text = distanceUnit.uppercase(), weight = 0.25f, isHeader = true)
+            if (has1RM) TableCell(text = "1RM", weight = 0.2f, isHeader = true)
         }
 
         HorizontalDivider(
@@ -291,11 +322,17 @@ private fun SetsTable(sets: List<WorkoutSet>, weightUnit: String = "kg", distanc
         )
 
         sets.forEach { set ->
+            val can1RM = set.weight != null && set.reps != null && set.reps > 0
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (can1RM) Modifier.clickable { onSetTap(set) }
+                        else Modifier
+                    )
+                    .padding(vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Set number + warmup indicator
                 val setLabel = if (set.isWarmup) "W" else "${set.setNumber}"
                 TableCell(
                     text = setLabel,
@@ -314,6 +351,18 @@ private fun SetsTable(sets: List<WorkoutSet>, weightUnit: String = "kg", distanc
                 if (hasWeight) TableCell(text = set.weight?.let { formatWeight(it, weightUnit) } ?: "—", weight = 0.2f)
                 if (hasDuration) TableCell(text = set.durationSec?.let { formatDuration(it) } ?: "—", weight = 0.25f)
                 if (hasDistance) TableCell(text = set.distanceMeters?.let { formatDistance(it, distanceUnit) } ?: "—", weight = 0.25f)
+                if (has1RM) {
+                    if (can1RM) {
+                        val epley = calc1RMEpley(set.weight!!, set.reps!!)
+                        TableCell(
+                            text = formatWeight(epley, weightUnit),
+                            weight = 0.2f,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        TableCell(text = "—", weight = 0.2f)
+                    }
+                }
             }
             set.note?.let { note ->
                 Text(
@@ -323,6 +372,15 @@ private fun SetsTable(sets: List<WorkoutSet>, weightUnit: String = "kg", distanc
                     modifier = Modifier.padding(bottom = 2.dp)
                 )
             }
+        }
+
+        if (has1RM) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Tap a set to see full 1RM breakdown",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
         }
     }
 }
@@ -359,4 +417,111 @@ private fun formatWeight(kg: Double, unit: String = "kg"): String {
 private fun formatDistance(meters: Int, unit: String = "km"): String {
     val value = if (unit == "miles") meters / 1609.344 else meters / 1000.0
     return "%.2f".format(value)
+}
+
+// ── 1RM Calculations ─────────────────────────────────────────────────────────
+
+private fun calc1RMEpley(weightKg: Double, reps: Int): Double =
+    weightKg * (1 + reps / 30.0)
+
+private fun calc1RMBrzycki(weightKg: Double, reps: Int): Double =
+    weightKg * 36.0 / (37.0 - reps)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OneRepMaxBottomSheet(
+    set: WorkoutSet,
+    weightUnit: String,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val weight = set.weight!!
+    val reps = set.reps!!
+
+    val epley = calc1RMEpley(weight, reps)
+    val brzycki = if (reps < 37) calc1RMBrzycki(weight, reps) else null
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "1RM Estimate",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Based on ${formatWeight(weight, weightUnit)} $weightUnit × $reps reps",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            HorizontalDivider()
+
+            OneRepMaxRow(
+                formula = "Epley",
+                description = "w × (1 + r ÷ 30)",
+                value = formatWeight(epley, weightUnit),
+                unit = weightUnit
+            )
+
+            if (brzycki != null) {
+                OneRepMaxRow(
+                    formula = "Brzycki",
+                    description = "w × 36 ÷ (37 − r)",
+                    value = formatWeight(brzycki, weightUnit),
+                    unit = weightUnit
+                )
+            }
+
+            if (reps > 10) {
+                Text(
+                    text = "Note: estimates are most accurate for 1–10 reps",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun OneRepMaxRow(
+    formula: String,
+    description: String,
+    value: String,
+    unit: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = formula,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Text(
+            text = "$value $unit",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
 }
