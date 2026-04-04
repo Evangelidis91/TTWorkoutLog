@@ -66,6 +66,7 @@ dependencies {
     implementation(libs.play.services.auth)
     implementation(libs.facebook.login)
     implementation(libs.coil.compose)
+    implementation(libs.gson)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
