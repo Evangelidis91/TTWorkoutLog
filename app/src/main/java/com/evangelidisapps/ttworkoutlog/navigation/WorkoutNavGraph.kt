@@ -17,6 +17,7 @@ import com.evangelidisapps.ttworkoutlog.ui.auth.AuthScreen
 import com.evangelidisapps.ttworkoutlog.ui.auth.AuthViewModel
 import com.evangelidisapps.ttworkoutlog.ui.home.HomeScreen
 import com.evangelidisapps.ttworkoutlog.ui.home.HomeViewModel
+import com.evangelidisapps.ttworkoutlog.ui.home.WorkoutFilter
 import com.evangelidisapps.ttworkoutlog.ui.home.WorkoutDetailScreen
 import com.evangelidisapps.ttworkoutlog.ui.home.WorkoutEditScreen
 import com.evangelidisapps.ttworkoutlog.ui.home.WorkoutEditViewModel
@@ -48,6 +49,8 @@ fun WorkoutNavGraph(
     )
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
     val workouts by homeViewModel.workouts.collectAsStateWithLifecycle()
+    val filteredWorkouts by homeViewModel.filteredWorkouts.collectAsStateWithLifecycle()
+    val filter by homeViewModel.filter.collectAsStateWithLifecycle()
     val workoutsWithDetails by homeViewModel.workoutsWithDetails.collectAsStateWithLifecycle()
     val dateFormat by homeViewModel.dateFormat.collectAsStateWithLifecycle()
     val weightUnit by homeViewModel.weightUnit.collectAsStateWithLifecycle()
@@ -89,8 +92,14 @@ fun WorkoutNavGraph(
                 userName = authState.displayName,
                 isSignedIn = authState.isSignedIn,
                 isGuest = authState.isGuest,
-                workouts = workouts,
+                workouts = filteredWorkouts,
                 dateFormat = dateFormat,
+                filter = filter,
+                onSearchQueryChange = homeViewModel::setSearchQuery,
+                onStyleFilterChange = homeViewModel::setStyleFilter,
+                onStartDateChange = homeViewModel::setStartDate,
+                onEndDateChange = homeViewModel::setEndDate,
+                onClearFilters = homeViewModel::clearFilters,
                 onAddWorkout = {
                     navController.navigate(ROUTE_WORKOUT_EDIT)
                 },
@@ -115,7 +124,7 @@ fun WorkoutNavGraph(
                 onSettings = { navController.navigate(ROUTE_SETTINGS) },
                 onBodyMeasurements = { navController.navigate(ROUTE_BODY) },
                 onDeleteWorkout = { homeViewModel.deleteWorkout(it) },
-                onUndoDelete = { homeViewModel.undoDelete(it) }
+                onUndoDelete = { homeViewModel.undoDelete(it) },
                 onProfile = { navController.navigate(ROUTE_PROFILE) },
                 onBackupRestore = { navController.navigate(ROUTE_BACKUP) }
             )
