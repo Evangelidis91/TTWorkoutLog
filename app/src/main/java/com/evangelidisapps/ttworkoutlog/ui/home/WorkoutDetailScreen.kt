@@ -168,6 +168,20 @@ fun WorkoutDetailScreen(
                 }
             }
 
+            // ── Muscle group summary ──────────────────────────────────────────
+            val muscleGroups = workoutWithDetails.exercises
+                .mapNotNull { it.exercise.muscleGroup }
+                .flatMap { it.split(",") }
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .distinct()
+
+            if (muscleGroups.isNotEmpty()) {
+                item {
+                    MuscleGroupSummaryCard(muscleGroups = muscleGroups)
+                }
+            }
+
             // ── Exercises ────────────────────────────────────────────────────
             if (workoutWithDetails.exercises.isEmpty()) {
                 item {
@@ -202,6 +216,47 @@ private fun StatChip(label: String) {
             labelColor = MaterialTheme.colorScheme.onPrimaryContainer
         )
     )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MuscleGroupSummaryCard(muscleGroups: List<String>) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Muscles Targeted",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                muscleGroups.forEach { muscle ->
+                    SuggestionChip(
+                        onClick = {},
+                        label = {
+                            Text(
+                                text = muscle.replaceFirstChar { it.uppercase() },
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        },
+                        colors = SuggestionChipDefaults.suggestionChipColors(
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            labelColor = MaterialTheme.colorScheme.onSecondary
+                        )
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
