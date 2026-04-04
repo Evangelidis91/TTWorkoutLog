@@ -14,7 +14,7 @@ import androidx.room.RoomDatabase
         CatalogExerciseEntity::class,
         BodyMeasurementEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class WorkoutDatabase : RoomDatabase() {

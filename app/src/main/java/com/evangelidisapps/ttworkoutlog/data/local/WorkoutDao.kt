@@ -10,12 +10,16 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface WorkoutDao {
-    @Query("SELECT * FROM workouts ORDER BY createdAt DESC")
+    @Query("SELECT * FROM workouts WHERE isTemplate = 0 ORDER BY createdAt DESC")
     fun observeWorkouts(): Flow<List<WorkoutEntity>>
 
     @Transaction
-    @Query("SELECT * FROM workouts ORDER BY createdAt DESC")
+    @Query("SELECT * FROM workouts WHERE isTemplate = 0 ORDER BY createdAt DESC")
     fun observeWorkoutsWithDetails(): Flow<List<WorkoutWithDetailsEntity>>
+
+    @Transaction
+    @Query("SELECT * FROM workouts WHERE isTemplate = 1 ORDER BY createdAt DESC")
+    fun observeTemplates(): Flow<List<WorkoutWithDetailsEntity>>
 
     @Transaction
     @Query("SELECT * FROM workouts WHERE id = :workoutId LIMIT 1")

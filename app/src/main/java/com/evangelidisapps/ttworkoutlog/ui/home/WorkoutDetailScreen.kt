@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -57,7 +58,8 @@ fun WorkoutDetailScreen(
     weightUnit: String = "kg",
     distanceUnit: String = "km",
     onBack: () -> Unit,
-    onEdit: () -> Unit
+    onEdit: () -> Unit,
+    onSaveAsTemplate: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -69,6 +71,9 @@ fun WorkoutDetailScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onSaveAsTemplate) {
+                        Icon(Icons.Default.FavoriteBorder, contentDescription = "Save as template")
+                    }
                     IconButton(onClick = onEdit) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit")
                     }

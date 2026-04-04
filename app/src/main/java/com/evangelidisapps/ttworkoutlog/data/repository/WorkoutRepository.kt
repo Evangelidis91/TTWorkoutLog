@@ -41,6 +41,41 @@ class WorkoutRepository(
     fun observeWorkoutsWithDetails(): Flow<List<WorkoutWithDetails>> =
         workoutDao.observeWorkoutsWithDetails().map { list -> list.map { it.toDomain() } }
 
+    fun observeTemplates(): Flow<List<WorkoutWithDetails>> =
+        workoutDao.observeTemplates().map { list -> list.map { it.toDomain() } }
+
+    suspend fun saveAsTemplate(workoutId: String) {
+        workoutDao.observeWorkoutWithDetails(workoutId).first()?.let { entity ->
+            val templateId = UUID.randomUUID().toString()
+            val template = entity.toDomain()
+            saveToRoomOnly(
+                template.copy(
+                    workout = template.workout.copy(
+                        id = templateId,
+                        isTemplate = true,
+                        createdAt = System.currentTimeMillis()
+                    ),
+                    exercises = template.exercises.mapIndexed { idx, ex ->
+                        val newExId = UUID.randomUUID().toString()
+                        ex.copy(
+                            id = newExId,
+                            workoutId = templateId,
+                            sets = ex.sets.map { s ->
+                                s.copy(id = UUID.randomUUID().toString(), workoutExerciseId = newExId)
+                            }
+                        )
+                    }
+                )
+            )
+        }
+    }
+
+    suspend fun deleteTemplate(id: String) {
+        workoutDao.observeWorkoutWithDetails(id).first()?.let { entity ->
+            workoutDao.delete(entity.workout)
+        }
+    }
+
     fun observeTotalWorkouts(): Flow<Int> = workoutDao.observeTotalWorkouts()
 
     fun observeTotalVolumeKg(): Flow<Double> = workoutDao.observeTotalVolumeKg()
@@ -114,7 +149,8 @@ private fun WorkoutEntity.toDomain(): Workout =
             durationSec = durationSec,
             calories = calories,
             style = style,
-            createdAt = createdAt
+            createdAt = createdAt,
+            isTemplate = isTemplate
         )
 
     private fun Workout.toEntity(): WorkoutEntity =
@@ -126,7 +162,8 @@ private fun WorkoutEntity.toDomain(): Workout =
             durationSec = durationSec,
             calories = calories,
             style = style,
-            createdAt = createdAt
+            createdAt = createdAt,
+            isTemplate = isTemplate
         )
 
     private fun Exercise.toEntity(): ExerciseEntity =

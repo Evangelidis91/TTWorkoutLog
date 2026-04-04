@@ -12,5 +12,6 @@ data class WorkoutEntity(
     val durationSec: Int? = null,
     val calories: Int? = null,
     val style: String? = null,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val isTemplate: Boolean = false
 )

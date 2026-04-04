@@ -28,6 +28,7 @@ import com.evangelidisapps.ttworkoutlog.ui.home.ProfileViewModel
 import com.evangelidisapps.ttworkoutlog.ui.home.BackupRestoreScreen
 import com.evangelidisapps.ttworkoutlog.ui.home.BackupRestoreViewModel
 import com.evangelidisapps.ttworkoutlog.ui.home.BodyMeasurementsViewModel
+import com.evangelidisapps.ttworkoutlog.ui.home.TemplatesScreen
 
 private const val ROUTE_AUTH = "auth"
 private const val ROUTE_HOME = "home"
@@ -38,6 +39,8 @@ private const val ROUTE_SETTINGS = "settings"
 private const val ROUTE_BODY = "body"
 private const val ROUTE_PROFILE = "profile"
 private const val ROUTE_BACKUP = "backup_restore"
+private const val ROUTE_TEMPLATES = "templates"
+private const val ARG_TEMPLATE_ID = "templateId"
 
 @Composable
 fun WorkoutNavGraph(
@@ -127,7 +130,8 @@ fun WorkoutNavGraph(
                 onDeleteWorkout = { homeViewModel.deleteWorkout(it) },
                 onUndoDelete = { homeViewModel.undoDelete(it) },
                 onProfile = { navController.navigate(ROUTE_PROFILE) },
-                onBackupRestore = { navController.navigate(ROUTE_BACKUP) }
+                onBackupRestore = { navController.navigate(ROUTE_BACKUP) },
+                onTemplates = { navController.navigate(ROUTE_TEMPLATES) }
             )
         }
         composable(
@@ -146,13 +150,21 @@ fun WorkoutNavGraph(
                 onBack = { navController.popBackStack() },
                 onEdit = {
                     navController.navigate("$ROUTE_WORKOUT_EDIT?workoutId=$workoutId")
+                },
+                onSaveAsTemplate = {
+                    if (workoutId != null) homeViewModel.saveAsTemplate(workoutId)
                 }
             )
         }
         composable(
-            route = "$ROUTE_WORKOUT_EDIT?workoutId={$ARG_WORKOUT_ID}",
+            route = "$ROUTE_WORKOUT_EDIT?workoutId={$ARG_WORKOUT_ID}&templateId={$ARG_TEMPLATE_ID}",
             arguments = listOf(
                 navArgument(ARG_WORKOUT_ID) {
+                    type = NavType.StringType
+                    defaultValue = ""
+                    nullable = true
+                },
+                navArgument(ARG_TEMPLATE_ID) {
                     type = NavType.StringType
                     defaultValue = ""
                     nullable = true
@@ -160,9 +172,10 @@ fun WorkoutNavGraph(
             )
         ) { entry ->
             val workoutId = entry.arguments?.getString(ARG_WORKOUT_ID).orEmpty().ifBlank { null }
+            val templateId = entry.arguments?.getString(ARG_TEMPLATE_ID).orEmpty().ifBlank { null }
             val app = LocalContext.current.applicationContext as Application
             val editViewModel: WorkoutEditViewModel = viewModel(
-                factory = WorkoutEditViewModel.provideFactory(app, workoutId)
+                factory = WorkoutEditViewModel.provideFactory(app, workoutId, templateId)
             )
             WorkoutEditScreen(
                 viewModel = editViewModel,
@@ -203,6 +216,14 @@ fun WorkoutNavGraph(
             BackupRestoreScreen(
                 viewModel = backupViewModel,
                 onBack = { navController.popBackStack() }
+            )
+        }
+        composable(ROUTE_TEMPLATES) {
+            TemplatesScreen(
+                onBack = { navController.popBackStack() },
+                onUseTemplate = { templateId ->
+                    navController.navigate("$ROUTE_WORKOUT_EDIT?templateId=$templateId")
+                }
             )
         }
     }

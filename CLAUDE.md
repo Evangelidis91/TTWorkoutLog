@@ -65,7 +65,7 @@ WorkoutEntity (workouts)
 CatalogExerciseEntity (catalog_exercises)        — standalone, populated from free-exercise-db CDN
 ```
 
-Current DB version: **3**. `WorkoutRelations.kt` defines the `@Relation` mappings (`WorkoutExerciseWithSetsEntity`, `WorkoutWithDetailsEntity`) used for nested Room queries.
+Current DB version: **5**. `WorkoutRelations.kt` defines the `@Relation` mappings (`WorkoutExerciseWithSetsEntity`, `WorkoutWithDetailsEntity`) used for nested Room queries.
 
 The DAO's `upsertWorkoutWithDetails()` is a `@Transaction` method that atomically writes all four tables. `WorkoutDatabase` uses `fallbackToDestructiveMigration()` — schema changes will wipe data in development.
 
@@ -101,7 +101,7 @@ WorkoutEditState
         └── List<EditableSetState>
 ```
 
-On load it fetches the full `WorkoutWithDetails` from the repository and converts it into these mutable UI states. On save it converts back to domain models and calls `repository.upsertWithDetails()`. New workouts default to the style set in `UserPreferencesRepository.defaultStyle`.
+On load it fetches the full `WorkoutWithDetails` from the repository and converts it into these mutable UI states. On save it converts back to domain models and calls `repository.upsertWithDetails()`. New workouts default to the style set in `UserPreferencesRepository.defaultStyle`. When `templateId` is supplied (not `existingWorkoutId`), the template's exercises/sets are cloned with fresh UUIDs, the date is set to today, and `isTemplate` is never set on the resulting workout.
 
 The ViewModel also manages the exercise catalog picker:
 - `CatalogFilter(query, equipment, muscle, category)` drives `catalogResults` via `flatMapLatest` on `_catalogFilter`
@@ -125,11 +125,12 @@ Defined in `WorkoutNavGraph.kt`:
 - `body` — Body measurements
 - `profile` — User profile screen (nav drawer)
 - `backup_restore` — Backup & restore screen (nav drawer)
+- `templates` — Templates list (nav drawer)
 
 ## Feature Backlog
 
 ### Core Functionality
-- [ ] Workout templates — save a workout as a template and reuse it (pre-fills exercises/sets)
+- [x] Workout templates — save a workout as a template and reuse it (pre-fills exercises/sets)
 - [ ] Rest timer — countdown between sets with a notification when time's up
 - [ ] Active workout mode — focused "in progress" screen where you tick off sets one by one, auto-recording timestamp
 - [ ] Personal records (PRs) — detect and highlight when a user hits a new max weight/reps for an exercise
@@ -173,6 +174,8 @@ Defined in `WorkoutNavGraph.kt`:
 - Search & filter workouts — by title, style (FilterChip), and date range (DatePickerDialog)
 
 ### Shipped (continued)
+- Workout templates — `isTemplate: Boolean` flag on `WorkoutEntity`/`Workout`; `WorkoutRepository.saveAsTemplate()` clones a workout with fresh UUIDs and `isTemplate = true`; `TemplatesScreen` + `TemplatesViewModel` list/delete templates; tapping "Use Template" navigates to `workout_edit?templateId=…`; `WorkoutEditViewModel` pre-fills state from template with new IDs and today's date; "Save as template" icon button (♡) on `WorkoutDetailScreen`; `Templates` entry in nav drawer; DB version 5
+- Body measurements — `BodyMeasurementEntity` (body_measurements table, DB v4→v5); `BodyMeasurementRepository`; `BodyMeasurementsViewModel` + `BodyMeasurementsScreen` with latest summary card, history list, edit/delete, and ModalBottomSheet form (weight, body fat %, muscle mass, BMI, waist/hip/chest/arm/thigh); respects kg/lbs pref
 - Exercise picker with search — `ExercisePickerSheet` in `WorkoutEditScreen.kt`; searches `CatalogExerciseEntity` via Room LIKE query; `FilterChip` rows for category, equipment, muscle group
 - Exercise detail sheet — `ExerciseDetailSheet` `ModalBottomSheet` layered on top of picker; Coil `AsyncImage` from CDN (`exercises/{id}/0.jpg`), instruction list, `AssistChip`s for level/category/equipment, "Add to Workout" button
 - Muscle group summary on workout — `MuscleGroupSummaryCard` in `WorkoutDetailScreen.kt`; derives distinct muscles from all exercises via `flatMap`/`distinct`; renders `SuggestionChip`s in a `FlowRow`
