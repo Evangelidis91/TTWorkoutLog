@@ -6,17 +6,22 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenuItem
@@ -46,9 +51,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.evangelidisapps.ttworkoutlog.data.model.CatalogExercise
 import com.evangelidisapps.ttworkoutlog.ui.theme.TTWorkoutLogTheme
 
@@ -64,6 +72,7 @@ fun WorkoutEditScreen(
     val distanceUnit by viewModel.distanceUnit.collectAsStateWithLifecycle()
     val catalogFilter by viewModel.catalogFilter.collectAsStateWithLifecycle()
     val catalogResults by viewModel.catalogResults.collectAsStateWithLifecycle()
+    val selectedExerciseDetail by viewModel.selectedExerciseDetail.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.saved) {
         if (state.saved) onSaved(state.workoutId)
@@ -75,6 +84,7 @@ fun WorkoutEditScreen(
         state = state,
         catalogFilter = catalogFilter,
         catalogResults = catalogResults,
+        selectedExerciseDetail = selectedExerciseDetail,
         onTitleChange = viewModel::updateTitle,
         onNoteChange = viewModel::updateNote,
         onStyleChange = viewModel::updateStyle,
@@ -83,6 +93,8 @@ fun WorkoutEditScreen(
         onDateChange = viewModel::updateDateLabel,
         onOpenPicker = viewModel::openExercisePicker,
         onClosePicker = viewModel::closeExercisePicker,
+        onViewDetail = viewModel::openExerciseDetail,
+        onCloseDetail = viewModel::closeExerciseDetail,
         onSelectFromCatalog = viewModel::addExerciseFromCatalog,
         onCatalogQueryChange = viewModel::setCatalogQuery,
         onCatalogEquipmentChange = viewModel::setCatalogEquipment,
@@ -111,6 +123,7 @@ private fun WorkoutEditContent(
     distanceUnit: String = "km",
     catalogFilter: CatalogFilter = CatalogFilter(),
     catalogResults: List<CatalogExercise> = emptyList(),
+    selectedExerciseDetail: CatalogExercise? = null,
     onTitleChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
     onStyleChange: (String) -> Unit,
@@ -119,6 +132,8 @@ private fun WorkoutEditContent(
     onDateChange: (String) -> Unit,
     onOpenPicker: () -> Unit,
     onClosePicker: () -> Unit,
+    onViewDetail: (CatalogExercise) -> Unit,
+    onCloseDetail: () -> Unit,
     onSelectFromCatalog: (CatalogExercise) -> Unit,
     onCatalogQueryChange: (String) -> Unit,
     onCatalogEquipmentChange: (String?) -> Unit,
@@ -157,8 +172,16 @@ private fun WorkoutEditContent(
             onMuscleChange = onCatalogMuscleChange,
             onCategoryChange = onCatalogCategoryChange,
             onClearFilters = onClearCatalogFilters,
-            onSelectExercise = onSelectFromCatalog,
+            onViewDetail = onViewDetail,
             onDismiss = onClosePicker
+        )
+    }
+
+    selectedExerciseDetail?.let { exercise ->
+        ExerciseDetailSheet(
+            exercise = exercise,
+            onAddToWorkout = onSelectFromCatalog,
+            onDismiss = onCloseDetail
         )
     }
 
@@ -296,7 +319,7 @@ private fun ExercisePickerSheet(
     onMuscleChange: (String?) -> Unit,
     onCategoryChange: (String?) -> Unit,
     onClearFilters: () -> Unit,
-    onSelectExercise: (CatalogExercise) -> Unit,
+    onViewDetail: (CatalogExercise) -> Unit,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartialExpansion = true)
@@ -457,18 +480,169 @@ private fun ExercisePickerSheet(
                                 }
                             },
                             trailingContent = {
-                                Text(
-                                    text = exercise.category.replaceFirstChar { it.uppercase() },
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+                                IconButton(onClick = { onViewDetail(exercise) }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = "View details",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             },
-                            modifier = Modifier.clickable { onSelectExercise(exercise) }
+                            modifier = Modifier.clickable { onViewDetail(exercise) }
                         )
                         HorizontalDivider()
                     }
                     item { Spacer(modifier = Modifier.height(32.dp)) }
                 }
+            }
+        }
+    }
+}
+
+// ── Exercise detail sheet ─────────────────────────────────────────────────────
+
+private fun exerciseImageUrl(exerciseId: String): String =
+    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/$exerciseId/0.jpg"
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExerciseDetailSheet(
+    exercise: CatalogExercise,
+    onAddToWorkout: (CatalogExercise) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartialExpansion = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        LazyColumn(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // ── Image ─────────────────────────────────────────────────────────
+            item {
+                AsyncImage(
+                    model = exerciseImageUrl(exercise.id),
+                    contentDescription = exercise.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .clip(RoundedCornerShape(12.dp))
+                )
+            }
+
+            // ── Name + meta chips ─────────────────────────────────────────────
+            item {
+                Text(
+                    text = exercise.name,
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    AssistChip(
+                        onClick = {},
+                        label = { Text(exercise.level.replaceFirstChar { it.uppercase() }) }
+                    )
+                    AssistChip(
+                        onClick = {},
+                        label = { Text(exercise.category.replaceFirstChar { it.uppercase() }) }
+                    )
+                    exercise.equipment?.let { eq ->
+                        AssistChip(
+                            onClick = {},
+                            label = { Text(eq.replaceFirstChar { it.uppercase() }) }
+                        )
+                    }
+                }
+            }
+
+            // ── Primary muscles ───────────────────────────────────────────────
+            if (exercise.primaryMuscles.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Primary muscles",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        exercise.primaryMuscles.forEach { muscle ->
+                            SuggestionChip(
+                                onClick = {},
+                                label = { Text(muscle.replaceFirstChar { it.uppercase() }) }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ── Secondary muscles ─────────────────────────────────────────────
+            if (exercise.secondaryMuscles.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Secondary muscles",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        exercise.secondaryMuscles.forEach { muscle ->
+                            SuggestionChip(
+                                onClick = {},
+                                label = { Text(muscle.replaceFirstChar { it.uppercase() }) }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ── Instructions ──────────────────────────────────────────────────
+            if (exercise.instructions.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Instructions",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                itemsIndexed(exercise.instructions) { index, step ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.padding(vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "${index + 1}.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 1.dp)
+                        )
+                        Text(
+                            text = step,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+
+            // ── Add button ────────────────────────────────────────────────────
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
+                Button(
+                    onClick = { onAddToWorkout(exercise) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Add to Workout")
+                }
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
@@ -733,6 +907,8 @@ private fun WorkoutEditPreview() {
             onDateChange = {},
             onOpenPicker = {},
             onClosePicker = {},
+            onViewDetail = {},
+            onCloseDetail = {},
             onSelectFromCatalog = {},
             onCatalogQueryChange = {},
             onCatalogEquipmentChange = {},

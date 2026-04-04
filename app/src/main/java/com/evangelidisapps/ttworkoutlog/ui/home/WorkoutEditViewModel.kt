@@ -92,6 +92,9 @@ class WorkoutEditViewModel(
     private val _catalogFilter = MutableStateFlow(CatalogFilter())
     val catalogFilter = _catalogFilter.asStateFlow()
 
+    private val _selectedExerciseDetail = MutableStateFlow<CatalogExercise?>(null)
+    val selectedExerciseDetail = _selectedExerciseDetail.asStateFlow()
+
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val catalogResults = _catalogFilter
         .flatMapLatest { f ->
@@ -99,8 +102,15 @@ class WorkoutEditViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-        fun openExercisePicker() = _state.update { it.copy(showExercisePicker = true) }
-    fun closeExercisePicker() = _state.update { it.copy(showExercisePicker = false) }
+    fun openExercisePicker() = _state.update { it.copy(showExercisePicker = true) }
+    fun closeExercisePicker() {
+        _state.update { it.copy(showExercisePicker = false) }
+        _selectedExerciseDetail.value = null
+        _catalogFilter.value = CatalogFilter()
+    }
+
+    fun openExerciseDetail(exercise: CatalogExercise) { _selectedExerciseDetail.value = exercise }
+    fun closeExerciseDetail() { _selectedExerciseDetail.value = null }
 
     fun setCatalogQuery(query: String) = _catalogFilter.update { it.copy(query = query) }
     fun setCatalogEquipment(equipment: String?) = _catalogFilter.update { it.copy(equipment = equipment) }
@@ -120,6 +130,7 @@ class WorkoutEditViewModel(
                 showExercisePicker = false
             )
         }
+        _selectedExerciseDetail.value = null
         _catalogFilter.value = CatalogFilter()
     }
 
