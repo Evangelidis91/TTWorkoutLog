@@ -56,6 +56,7 @@ fun HomeScreen(
     onSettings: () -> Unit,
     onBodyMeasurements: () -> Unit,
     onProfile: () -> Unit,
+    onBackupRestore: () -> Unit,
     onWorkoutClick: (Workout) -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -87,6 +88,10 @@ fun HomeScreen(
                     onProfile = {
                         scope.launch { drawerState.close() }
                         onProfile()
+                    },
+                    onBackupRestore = {
+                        scope.launch { drawerState.close() }
+                        onBackupRestore()
                     }
                 )
             }
@@ -208,7 +213,8 @@ private fun DrawerContent(
     onLogout: () -> Unit,
     onSettings: () -> Unit,
     onBodyMeasurements: () -> Unit,
-    onProfile: () -> Unit
+    onProfile: () -> Unit,
+    onBackupRestore: () -> Unit
 ) {
     val items = listOf(
         DrawerItem(label = "Profile", action = onProfile),
@@ -217,6 +223,7 @@ private fun DrawerContent(
             action = if (isSignedIn && !isGuest) onLogout else onLogin
         ),
         DrawerItem(label = "Body measurements", action = onBodyMeasurements),
+        DrawerItem(label = "Backup & Restore", action = onBackupRestore),
         DrawerItem(label = "Settings", action = onSettings)
     )
     Column(
@@ -278,6 +285,7 @@ private fun HomeScreenPreview() {
             onSettings = {},
             onBodyMeasurements = {},
             onProfile = {},
+            onBackupRestore = {},
             onWorkoutClick = {}
         )
     }

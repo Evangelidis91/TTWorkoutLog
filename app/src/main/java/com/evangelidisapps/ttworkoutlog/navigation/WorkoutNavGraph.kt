@@ -24,6 +24,8 @@ import com.evangelidisapps.ttworkoutlog.ui.home.SettingsScreen
 import com.evangelidisapps.ttworkoutlog.ui.home.BodyMeasurementsScreen
 import com.evangelidisapps.ttworkoutlog.ui.home.ProfileScreen
 import com.evangelidisapps.ttworkoutlog.ui.home.ProfileViewModel
+import com.evangelidisapps.ttworkoutlog.ui.home.BackupRestoreScreen
+import com.evangelidisapps.ttworkoutlog.ui.home.BackupRestoreViewModel
 
 private const val ROUTE_AUTH = "auth"
 private const val ROUTE_HOME = "home"
@@ -33,6 +35,7 @@ private const val ROUTE_WORKOUT_EDIT = "workout_edit"
 private const val ROUTE_SETTINGS = "settings"
 private const val ROUTE_BODY = "body"
 private const val ROUTE_PROFILE = "profile"
+private const val ROUTE_BACKUP = "backup_restore"
 
 @Composable
 fun WorkoutNavGraph(
@@ -111,7 +114,8 @@ fun WorkoutNavGraph(
                 },
                 onSettings = { navController.navigate(ROUTE_SETTINGS) },
                 onBodyMeasurements = { navController.navigate(ROUTE_BODY) },
-                onProfile = { navController.navigate(ROUTE_PROFILE) }
+                onProfile = { navController.navigate(ROUTE_PROFILE) },
+                onBackupRestore = { navController.navigate(ROUTE_BACKUP) }
             )
         }
         composable(
@@ -173,6 +177,13 @@ fun WorkoutNavGraph(
             val profileViewModel: ProfileViewModel = viewModel()
             ProfileScreen(
                 viewModel = profileViewModel,
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(ROUTE_BACKUP) {
+            val backupViewModel: BackupRestoreViewModel = viewModel()
+            BackupRestoreScreen(
+                viewModel = backupViewModel,
                 onBack = { navController.popBackStack() }
             )
         }
