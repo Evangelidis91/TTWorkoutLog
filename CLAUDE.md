@@ -39,7 +39,7 @@ com.evangelidisapps.ttworkoutlog/
 │   ├── local/          # Room database (entities, DAO, database)
 │   ├── model/          # Domain models
 │   ├── remote/         # FirestoreRepository (cloud storage)
-│   └── repository/     # WorkoutRepository + UserPreferencesRepository
+│   └── repository/     # WorkoutRepository + UserPreferencesRepository + ExerciseCatalogRepository
 ├── ui/
 │   ├── auth/           # Authentication (AuthScreen, AuthViewModel)
 │   ├── home/           # Main screens (Home, WorkoutDetail, WorkoutEdit, Settings, BodyMeasurements)
@@ -61,13 +61,19 @@ WorkoutEntity (workouts)
   └── WorkoutExerciseEntity (workout_exercises) — via workoutId
         ├── ExerciseEntity (exercises)           — via exerciseId (shared exercise catalog)
         └── WorkoutSetEntity (workout_sets)      — via workoutExerciseId
+
+CatalogExerciseEntity (catalog_exercises)        — standalone, populated from free-exercise-db CDN
 ```
 
-`WorkoutRelations.kt` defines the `@Relation` mappings (`WorkoutExerciseWithSetsEntity`, `WorkoutWithDetailsEntity`) used for nested Room queries.
+Current DB version: **3**. `WorkoutRelations.kt` defines the `@Relation` mappings (`WorkoutExerciseWithSetsEntity`, `WorkoutWithDetailsEntity`) used for nested Room queries.
 
 The DAO's `upsertWorkoutWithDetails()` is a `@Transaction` method that atomically writes all four tables. `WorkoutDatabase` uses `fallbackToDestructiveMigration()` — schema changes will wipe data in development.
 
 `WorkoutSetEntity` has a `setType: String = "strength"` field for future exercise type support.
+
+`CatalogExerciseEntity` stores list fields as pipe-separated strings (`primaryMuscles`, `secondaryMuscles`) and newline-separated strings (`instructions`) to avoid TypeConverters overhead. `ExerciseCatalogRepository` splits them back to `List<String>` when mapping to the `CatalogExercise` domain model.
+
+`ExerciseCatalogRepository.loadIfNeeded()` fetches `exercises.json` from the free-exercise-db GitHub CDN on first launch (when `getCatalogCount() == 0`), parses with Gson, and inserts ~800 exercises with `IGNORE` conflict strategy. `search(query, equipment, muscle, category)` returns a `Flow` via LIKE + IS NULL guards in the DAO.
 
 ### Storage Strategy: Guest vs Logged-In
 
@@ -97,6 +103,13 @@ WorkoutEditState
 
 On load it fetches the full `WorkoutWithDetails` from the repository and converts it into these mutable UI states. On save it converts back to domain models and calls `repository.upsertWithDetails()`. New workouts default to the style set in `UserPreferencesRepository.defaultStyle`.
 
+The ViewModel also manages the exercise catalog picker:
+- `CatalogFilter(query, equipment, muscle, category)` drives `catalogResults` via `flatMapLatest` on `_catalogFilter`
+- `showExercisePicker: Boolean` in `WorkoutEditState` controls the picker sheet
+- `_selectedExerciseDetail: MutableStateFlow<CatalogExercise?>` controls the detail sheet layered on top of the picker
+- `addExerciseFromCatalog(exercise)` pre-fills name + first `primaryMuscle`, closes both sheets
+- `init` calls `catalogRepository.loadIfNeeded()` to trigger the first-launch CDN fetch
+
 ### Settings
 
 `SettingsScreen` is backed by `SettingsViewModel` (separate from `HomeViewModel`). It persists a default workout style via `UserPreferencesRepository` (`DEFAULT_STYLE` DataStore key, defaults to `"Standard"`). The `StyleDropdown` composable (defined in `WorkoutEditScreen.kt`, `public`) is shared between the edit and settings screens. Style options: Standard, WOD, For Time, AMRAP, Complex, Other.
@@ -110,6 +123,43 @@ Defined in `WorkoutNavGraph.kt`:
 - `workout_edit?workoutId={id}` — Create/edit workout (optional id)
 - `settings` — Settings
 - `body` — Body measurements
+- `profile` — User profile screen (nav drawer)
+- `backup_restore` — Backup & restore screen (nav drawer)
+
+## Feature Backlog
+
+### Core Functionality
+- [ ] Workout templates — save a workout as a template and reuse it (pre-fills exercises/sets)
+- [ ] Rest timer — countdown between sets with a notification when time's up
+- [ ] Active workout mode — focused "in progress" screen where you tick off sets one by one, auto-recording timestamp
+- [ ] Personal records (PRs) — detect and highlight when a user hits a new max weight/reps for an exercise
+- [ ] Exercise history — tap an exercise name to see all past performances for that movement (weight progression over time)
+- [ ] Superset grouping display — visually group supersets in the edit/detail screens
+
+### Data & Stats
+- [ ] Progress charts — line charts for weight lifted, volume, or body weight over time (Vico or MPAndroidChart)
+- [ ] Weekly/monthly volume summary — total sets, reps, tonnage per muscle group
+- [ ] Body measurements tracking — `BodyMeasurementsScreen` exists but is empty; implement weight, body fat %, measurements log with history
+- [ ] Workout streak / calendar heatmap — visualise consistency
+
+### UX & Design
+- [x] Swipe to delete workouts from the home list
+- [x] Search & filter workouts by title, style, or date range
+- [ ] Workout duplication — copy an existing workout to edit and re-save
+- [x] Exercise catalog — local pre-seeded list of common exercises to pick from instead of typing freehand
+- [ ] Drag to reorder exercises within a workout edit session
+
+### Settings & Personalisation
+- [x] Weight unit toggle — kg / lbs (stored in preferences, applied across all displays)
+- [x] Distance unit toggle — km / miles
+- [x] 1RM calculator — tap a set to estimate one-rep max using Epley or Brzycki formula
+
+### Social / Account
+- [x] Profile screen — display name, photo, stats summary (total workouts, total volume)
+- [ ] Export workout — share a workout as formatted text or PDF
+- [x] Backup & restore — manual JSON export/import via Android Storage Access Framework
+
+---
 
 ## Feature Roadmap
 
@@ -122,13 +172,13 @@ Defined in `WorkoutNavGraph.kt`:
 - Swipe to delete workouts — SwipeToDismissBox with undo snackbar
 - Search & filter workouts — by title, style (FilterChip), and date range (DatePickerDialog)
 
-### Planned — Exercise Database (free-exercise-db, ~800 exercises)
-Integration approach: bundle `exercises.json` as a raw asset, load into a Room table on first launch — fully offline, no network dependency. Images fetched lazily from GitHub CDN.
+### Shipped (continued)
+- Exercise picker with search — `ExercisePickerSheet` in `WorkoutEditScreen.kt`; searches `CatalogExerciseEntity` via Room LIKE query; `FilterChip` rows for category, equipment, muscle group
+- Exercise detail sheet — `ExerciseDetailSheet` `ModalBottomSheet` layered on top of picker; Coil `AsyncImage` from CDN (`exercises/{id}/0.jpg`), instruction list, `AssistChip`s for level/category/equipment, "Add to Workout" button
+- Muscle group summary on workout — `MuscleGroupSummaryCard` in `WorkoutDetailScreen.kt`; derives distinct muscles from all exercises via `flatMap`/`distinct`; renders `SuggestionChip`s in a `FlowRow`
 
-**High priority**
-- Exercise picker with search — browse/search the catalog when adding an exercise instead of typing freehand; filter by equipment, muscle group, or category
-- Exercise detail sheet — tap any exercise to see primary/secondary muscles, step-by-step instructions, and exercise image
-- Muscle group summary on workout — auto-derive which muscle groups a workout hit from the logged exercises
+### Planned — Exercise Database (free-exercise-db, ~800 exercises)
+Data is fetched from GitHub CDN on first launch and cached in Room. Images fetched lazily per-exercise from the same CDN.
 
 **Medium priority**
 - Suggest a workout by muscle group — pick target muscles → get matching exercises from the DB to add
@@ -149,9 +199,11 @@ Integration approach: bundle `exercises.json` as a raw asset, load into a Room t
 - **Min SDK**: 28 (Android 9)
 - **Target SDK**: 36
 - **Kotlin**: 2.0.21 with Compose compiler plugin (KSP 2.0.21-1.0.25)
-- **Room**: 2.6.1 with KSP for annotation processing
+- **Room**: 2.6.1 with KSP for annotation processing (DB version 3)
 - **Compose BOM**: 2024.09.00
 - **DataStore**: 1.0.0
+- **Coil**: 2.7.0 (`coil-compose`) — used for profile photos and exercise catalog images
+- **Gson**: 2.10.1 — used for backup/restore JSON serialization and CDN catalog parsing
 - **Firebase BOM**: 34.11.0 (Auth + Firestore; `-ktx` artifact suffixes removed in BOM 32.5+)
 - **Google Services plugin**: 4.4.4 (generates `default_web_client_id` from `google-services.json`)
 - **Java compatibility**: JVM 11

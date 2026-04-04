@@ -11,9 +11,10 @@ import androidx.room.RoomDatabase
         ExerciseEntity::class,
         WorkoutExerciseEntity::class,
         WorkoutSetEntity::class,
-        CatalogExerciseEntity::class
+        CatalogExerciseEntity::class,
+        BodyMeasurementEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class WorkoutDatabase : RoomDatabase() {
