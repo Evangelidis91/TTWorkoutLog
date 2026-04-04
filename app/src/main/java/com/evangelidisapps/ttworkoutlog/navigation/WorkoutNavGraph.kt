@@ -29,6 +29,7 @@ import com.evangelidisapps.ttworkoutlog.ui.home.BackupRestoreScreen
 import com.evangelidisapps.ttworkoutlog.ui.home.BackupRestoreViewModel
 import com.evangelidisapps.ttworkoutlog.ui.home.BodyMeasurementsViewModel
 import com.evangelidisapps.ttworkoutlog.ui.home.TemplatesScreen
+import com.evangelidisapps.ttworkoutlog.timer.RestTimerViewModel
 
 private const val ROUTE_AUTH = "auth"
 private const val ROUTE_HOME = "home"
@@ -44,7 +45,8 @@ private const val ARG_TEMPLATE_ID = "templateId"
 
 @Composable
 fun WorkoutNavGraph(
-    homeViewModel: HomeViewModel = viewModel()
+    homeViewModel: HomeViewModel = viewModel(),
+    restTimerViewModel: RestTimerViewModel = viewModel()
 ) {
     val navController = rememberNavController()
     val app = LocalContext.current.applicationContext as Application
@@ -179,6 +181,7 @@ fun WorkoutNavGraph(
             )
             WorkoutEditScreen(
                 viewModel = editViewModel,
+                restTimerViewModel = restTimerViewModel,
                 onSaved = { savedId ->
                     navController.popBackStack()
                     navController.navigate("$ROUTE_WORKOUT_DETAIL/$savedId")

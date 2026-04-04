@@ -44,6 +44,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,12 +62,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.evangelidisapps.ttworkoutlog.data.model.CatalogExercise
+import com.evangelidisapps.ttworkoutlog.timer.RestTimerSheet
+import com.evangelidisapps.ttworkoutlog.timer.RestTimerViewModel
 import com.evangelidisapps.ttworkoutlog.ui.theme.TTWorkoutLogTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkoutEditScreen(
     viewModel: WorkoutEditViewModel,
+    restTimerViewModel: RestTimerViewModel? = null,
     onSaved: (String) -> Unit,
     onBack: () -> Unit
 ) {
@@ -73,9 +80,29 @@ fun WorkoutEditScreen(
     val catalogFilter by viewModel.catalogFilter.collectAsStateWithLifecycle()
     val catalogResults by viewModel.catalogResults.collectAsStateWithLifecycle()
     val selectedExerciseDetail by viewModel.selectedExerciseDetail.collectAsStateWithLifecycle()
+    val timerState = restTimerViewModel?.state?.collectAsStateWithLifecycle()
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* granted or denied — timer still works in-app */ }
+
+    fun openTimerWithPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        restTimerViewModel?.openSheet()
+    }
 
     LaunchedEffect(state.saved) {
         if (state.saved) onSaved(state.workoutId)
+    }
+
+    // Rest timer sheet (rendered outside WorkoutEditContent so it layers above scaffold)
+    if (timerState?.value?.showSheet == true && restTimerViewModel != null) {
+        RestTimerSheet(
+            viewModel = restTimerViewModel,
+            onDismiss = { restTimerViewModel.closeSheet() }
+        )
     }
 
     WorkoutEditContent(
@@ -111,7 +138,8 @@ fun WorkoutEditScreen(
         onRemoveSet = viewModel::removeSet,
         onUpdateSet = viewModel::updateSet,
         onSave = viewModel::save,
-        onBack = onBack
+        onBack = onBack,
+        onOpenTimer = { openTimerWithPermission() }
     )
 }
 
@@ -161,7 +189,8 @@ private fun WorkoutEditContent(
         isWarmup: Boolean?
     ) -> Unit,
     onSave: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenTimer: () -> Unit = {}
 ) {
     if (state.showExercisePicker) {
         ExercisePickerSheet(
@@ -193,6 +222,7 @@ private fun WorkoutEditContent(
                     TextButton(onClick = onBack) { Text("Back") }
                 },
                 actions = {
+                    TextButton(onClick = onOpenTimer) { Text("\u23F1") }
                     Button(onClick = onSave, enabled = !state.isSaving) {
                         Text(if (state.isSaving) "Saving..." else "Save")
                     }
