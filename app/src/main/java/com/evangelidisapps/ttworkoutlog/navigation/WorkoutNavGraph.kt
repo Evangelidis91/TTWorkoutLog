@@ -1,0 +1,165 @@
+package com.evangelidisapps.ttworkoutlog.navigation
+
+import android.app.Application
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.evangelidisapps.ttworkoutlog.ui.auth.AuthScreen
+import com.evangelidisapps.ttworkoutlog.ui.auth.AuthViewModel
+import com.evangelidisapps.ttworkoutlog.ui.home.HomeScreen
+import com.evangelidisapps.ttworkoutlog.ui.home.HomeViewModel
+import com.evangelidisapps.ttworkoutlog.ui.home.WorkoutDetailScreen
+import com.evangelidisapps.ttworkoutlog.ui.home.WorkoutEditScreen
+import com.evangelidisapps.ttworkoutlog.ui.home.WorkoutEditViewModel
+import com.evangelidisapps.ttworkoutlog.ui.home.SettingsScreen
+import com.evangelidisapps.ttworkoutlog.ui.home.BodyMeasurementsScreen
+
+private const val ROUTE_AUTH = "auth"
+private const val ROUTE_HOME = "home"
+private const val ROUTE_WORKOUT_DETAIL = "workout"
+private const val ARG_WORKOUT_ID = "workoutId"
+private const val ROUTE_WORKOUT_EDIT = "workout_edit"
+private const val ROUTE_SETTINGS = "settings"
+private const val ROUTE_BODY = "body"
+
+@Composable
+fun WorkoutNavGraph(
+    homeViewModel: HomeViewModel = viewModel()
+) {
+    val navController = rememberNavController()
+    val app = LocalContext.current.applicationContext as Application
+    val authViewModel: AuthViewModel = viewModel(
+        factory = AuthViewModel.provideFactory(app)
+    )
+    val authState by authViewModel.uiState.collectAsStateWithLifecycle()
+    val workouts by homeViewModel.workouts.collectAsStateWithLifecycle()
+    val workoutsWithDetails by homeViewModel.workoutsWithDetails.collectAsStateWithLifecycle()
+    val dateFormat by homeViewModel.dateFormat.collectAsStateWithLifecycle()
+
+    // Show nothing while loading auth state
+    if (authState.isLoading) {
+        return
+    }
+
+    LaunchedEffect(authState.isSignedIn) {
+        val target = if (authState.isSignedIn) ROUTE_HOME else ROUTE_AUTH
+        navController.navigate(target) {
+            popUpTo(navController.graph.findStartDestination().id) {
+                inclusive = true
+            }
+            launchSingleTop = true
+        }
+    }
+
+    val startDest = if (authState.isSignedIn || authState.isGuest) ROUTE_HOME else ROUTE_AUTH
+
+    NavHost(
+        navController = navController,
+        startDestination = startDest
+    ) {
+        composable(ROUTE_AUTH) {
+            AuthScreen(
+                uiState = authState,
+                onSignInEmail = { email, password -> authViewModel.signInWithEmail(email, password) },
+                onRegisterEmail = { email, password, name -> authViewModel.registerWithEmail(email, password, name) },
+                onGoogleSignIn = { idToken -> authViewModel.signInWithGoogle(idToken) },
+                onFacebookSignIn = { token -> authViewModel.signInWithFacebook(token) },
+                onContinueAsGuest = { authViewModel.continueAsGuest() }
+            )
+        }
+        composable(ROUTE_HOME) {
+            HomeScreen(
+                userName = authState.displayName,
+                isSignedIn = authState.isSignedIn,
+                isGuest = authState.isGuest,
+                workouts = workouts,
+                dateFormat = dateFormat,
+                onAddWorkout = {
+                    navController.navigate(ROUTE_WORKOUT_EDIT)
+                },
+                onWorkoutClick = { workout ->
+                    navController.navigate("$ROUTE_WORKOUT_DETAIL/${workout.id}")
+                },
+                onLogin = {
+                    navController.navigate(ROUTE_AUTH) {
+                        popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+                onLogout = {
+                    authViewModel.signOut()
+                    navController.navigate(ROUTE_AUTH) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
+                    }
+                },
+                onSettings = { navController.navigate(ROUTE_SETTINGS) },
+                onBodyMeasurements = { navController.navigate(ROUTE_BODY) }
+            )
+        }
+        composable(
+            route = "$ROUTE_WORKOUT_DETAIL/{$ARG_WORKOUT_ID}",
+            arguments = listOf(
+                navArgument(ARG_WORKOUT_ID) { type = NavType.StringType }
+            )
+        ) { entry ->
+            val workoutId = entry.arguments?.getString(ARG_WORKOUT_ID)
+            val workoutWithDetails = workoutsWithDetails.firstOrNull { it.workout.id == workoutId }
+            WorkoutDetailScreen(
+                workoutWithDetails = workoutWithDetails,
+                dateFormat = dateFormat,
+                onBack = { navController.popBackStack() },
+                onEdit = {
+                    navController.navigate("$ROUTE_WORKOUT_EDIT?workoutId=$workoutId")
+                }
+            )
+        }
+        composable(
+            route = "$ROUTE_WORKOUT_EDIT?workoutId={$ARG_WORKOUT_ID}",
+            arguments = listOf(
+                navArgument(ARG_WORKOUT_ID) {
+                    type = NavType.StringType
+                    defaultValue = ""
+                    nullable = true
+                }
+            )
+        ) { entry ->
+            val workoutId = entry.arguments?.getString(ARG_WORKOUT_ID).orEmpty().ifBlank { null }
+            val app = LocalContext.current.applicationContext as Application
+            val editViewModel: WorkoutEditViewModel = viewModel(
+                factory = WorkoutEditViewModel.provideFactory(app, workoutId)
+            )
+            WorkoutEditScreen(
+                viewModel = editViewModel,
+                onSaved = { savedId ->
+                    navController.popBackStack()
+                    navController.navigate("$ROUTE_WORKOUT_DETAIL/$savedId")
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(ROUTE_SETTINGS) {
+            val settingsViewModel: com.evangelidisapps.ttworkoutlog.ui.home.SettingsViewModel = viewModel(
+                factory = com.evangelidisapps.ttworkoutlog.ui.home.SettingsViewModel.provideFactory(app)
+            )
+            SettingsScreen(
+                viewModel = settingsViewModel,
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(ROUTE_BODY) {
+            BodyMeasurementsScreen(onBack = { navController.popBackStack() })
+        }
+    }
+}
