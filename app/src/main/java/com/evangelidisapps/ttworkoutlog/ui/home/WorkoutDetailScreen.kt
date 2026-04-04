@@ -47,6 +47,8 @@ import com.evangelidisapps.ttworkoutlog.data.model.WorkoutWithDetails
 fun WorkoutDetailScreen(
     workoutWithDetails: WorkoutWithDetails?,
     dateFormat: String = "dd/MM/yyyy",
+    weightUnit: String = "kg",
+    distanceUnit: String = "km",
     onBack: () -> Unit,
     onEdit: () -> Unit
 ) {
@@ -174,7 +176,7 @@ fun WorkoutDetailScreen(
                 }
             } else {
                 items(workoutWithDetails.exercises) { exercise ->
-                    ExerciseCard(exercise = exercise)
+                    ExerciseCard(exercise = exercise, weightUnit = weightUnit, distanceUnit = distanceUnit)
                 }
             }
 
@@ -196,7 +198,7 @@ private fun StatChip(label: String) {
 }
 
 @Composable
-private fun ExerciseCard(exercise: WorkoutExercise) {
+private fun ExerciseCard(exercise: WorkoutExercise, weightUnit: String = "kg", distanceUnit: String = "km") {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -241,7 +243,7 @@ private fun ExerciseCard(exercise: WorkoutExercise) {
 
             if (exercise.sets.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
-                SetsTable(sets = exercise.sets)
+                SetsTable(sets = exercise.sets, weightUnit = weightUnit, distanceUnit = distanceUnit)
             }
         }
     }
@@ -266,7 +268,7 @@ private fun SupersetBadge() {
 }
 
 @Composable
-private fun SetsTable(sets: List<WorkoutSet>) {
+private fun SetsTable(sets: List<WorkoutSet>, weightUnit: String = "kg", distanceUnit: String = "km") {
     val hasWeight = sets.any { it.weight != null }
     val hasReps = sets.any { it.reps != null }
     val hasDuration = sets.any { it.durationSec != null }
@@ -278,9 +280,9 @@ private fun SetsTable(sets: List<WorkoutSet>) {
             TableCell(text = "SET", weight = 0.12f, isHeader = true)
             TableCell(text = "TYPE", weight = 0.18f, isHeader = true)
             if (hasReps) TableCell(text = "REPS", weight = 0.2f, isHeader = true)
-            if (hasWeight) TableCell(text = "KG", weight = 0.2f, isHeader = true)
+            if (hasWeight) TableCell(text = weightUnit.uppercase(), weight = 0.2f, isHeader = true)
             if (hasDuration) TableCell(text = "TIME", weight = 0.25f, isHeader = true)
-            if (hasDistance) TableCell(text = "DIST", weight = 0.25f, isHeader = true)
+            if (hasDistance) TableCell(text = distanceUnit.uppercase(), weight = 0.25f, isHeader = true)
         }
 
         HorizontalDivider(
@@ -309,9 +311,9 @@ private fun SetsTable(sets: List<WorkoutSet>) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (hasReps) TableCell(text = set.reps?.toString() ?: "—", weight = 0.2f)
-                if (hasWeight) TableCell(text = set.weight?.let { formatWeight(it) } ?: "—", weight = 0.2f)
+                if (hasWeight) TableCell(text = set.weight?.let { formatWeight(it, weightUnit) } ?: "—", weight = 0.2f)
                 if (hasDuration) TableCell(text = set.durationSec?.let { formatDuration(it) } ?: "—", weight = 0.25f)
-                if (hasDistance) TableCell(text = set.distanceMeters?.let { formatDistance(it) } ?: "—", weight = 0.25f)
+                if (hasDistance) TableCell(text = set.distanceMeters?.let { formatDistance(it, distanceUnit) } ?: "—", weight = 0.25f)
             }
             set.note?.let { note ->
                 Text(
@@ -349,8 +351,12 @@ private fun formatDuration(seconds: Int): String {
     else "%d:%02d".format(m, s)
 }
 
-private fun formatWeight(kg: Double): String =
-    if (kg == kg.toLong().toDouble()) kg.toLong().toString() else "%.1f".format(kg)
+private fun formatWeight(kg: Double, unit: String = "kg"): String {
+    val value = if (unit == "lbs") kg * 2.20462 else kg
+    return if (value == value.toLong().toDouble()) value.toLong().toString() else "%.1f".format(value)
+}
 
-private fun formatDistance(meters: Int): String =
-    if (meters >= 1000) "%.1f km".format(meters / 1000.0) else "$meters m"
+private fun formatDistance(meters: Int, unit: String = "km"): String {
+    val value = if (unit == "miles") meters / 1609.344 else meters / 1000.0
+    return "%.2f".format(value)
+}

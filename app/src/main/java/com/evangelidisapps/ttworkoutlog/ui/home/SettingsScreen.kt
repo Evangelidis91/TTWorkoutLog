@@ -42,6 +42,8 @@ fun SettingsScreen(
     val defaultStyle by viewModel.defaultStyle.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val dateFormat by viewModel.dateFormat.collectAsStateWithLifecycle()
+    val weightUnit by viewModel.weightUnit.collectAsStateWithLifecycle()
+    val distanceUnit by viewModel.distanceUnit.collectAsStateWithLifecycle()
     val systemIsDark = isSystemInDarkTheme()
     val isDark = when (themeMode) {
         "dark" -> true
@@ -82,6 +84,78 @@ fun SettingsScreen(
                         viewModel.setThemeMode(if (checked) "dark" else "light")
                     }
                 )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Weight Unit",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "kg",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (weightUnit == "kg") MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Switch(
+                        checked = weightUnit == "lbs",
+                        onCheckedChange = { isLbs ->
+                            viewModel.setWeightUnit(if (isLbs) "lbs" else "kg")
+                        },
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                    Text(
+                        text = "lbs",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (weightUnit == "lbs") MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Distance Unit",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "km",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (distanceUnit == "km") MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Switch(
+                        checked = distanceUnit == "miles",
+                        onCheckedChange = { isMiles ->
+                            viewModel.setDistanceUnit(if (isMiles) "miles" else "km")
+                        },
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                    Text(
+                        text = "miles",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (distanceUnit == "miles") MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))

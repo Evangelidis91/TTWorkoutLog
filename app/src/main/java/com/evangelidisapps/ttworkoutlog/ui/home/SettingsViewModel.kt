@@ -24,6 +24,12 @@ class SettingsViewModel(
     val dateFormat: StateFlow<String> = prefsRepo.dateFormat
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "dd/MM/yyyy")
 
+    val weightUnit: StateFlow<String> = prefsRepo.weightUnit
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "kg")
+
+    val distanceUnit: StateFlow<String> = prefsRepo.distanceUnit
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "km")
+
     fun setDefaultStyle(style: String) {
         viewModelScope.launch { prefsRepo.setDefaultStyle(style) }
     }
@@ -34,6 +40,14 @@ class SettingsViewModel(
 
     fun setDateFormat(format: String) {
         viewModelScope.launch { prefsRepo.setDateFormat(format) }
+    }
+
+    fun setWeightUnit(unit: String) {
+        viewModelScope.launch { prefsRepo.setWeightUnit(unit) }
+    }
+
+    fun setDistanceUnit(unit: String) {
+        viewModelScope.launch { prefsRepo.setDistanceUnit(unit) }
     }
 
     companion object {

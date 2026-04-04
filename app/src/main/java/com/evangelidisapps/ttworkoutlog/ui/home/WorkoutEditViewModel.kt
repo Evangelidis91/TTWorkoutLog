@@ -16,7 +16,9 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.firstOrNull
@@ -67,10 +69,18 @@ class WorkoutEditViewModel(
     private val _state = MutableStateFlow(WorkoutEditState())
     val state = _state.asStateFlow()
 
+    val weightUnit = prefsRepository.weightUnit
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "kg")
+
+    val distanceUnit = prefsRepository.distanceUnit
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "km")
+
 init {
         if (!existingWorkoutId.isNullOrBlank()) {
             viewModelScope.launch {
                 val fmt = prefsRepository.dateFormat.firstOrNull() ?: "dd/MM/yyyy"
+                val unit = prefsRepository.weightUnit.firstOrNull() ?: "kg"
+                val distUnit = prefsRepository.distanceUnit.firstOrNull() ?: "km"
                 repository.observeWorkoutWithDetails(existingWorkoutId).firstOrNull()?.let { details ->
                     _state.update { current ->
                         current.copy(
@@ -94,9 +104,9 @@ init {
                                             id = set.id,
                                             setNumber = set.setNumber,
                                             reps = set.reps?.toString().orEmpty(),
-                                            weight = set.weight?.toString().orEmpty(),
+                                            weight = set.weight?.let { kgToDisplayUnit(it, unit) }.orEmpty(),
                                             durationSec = set.durationSec?.toString().orEmpty(),
-                                            distanceMeters = set.distanceMeters?.toString().orEmpty(),
+                                            distanceMeters = set.distanceMeters?.let { metersToDisplayUnit(it, distUnit) }.orEmpty(),
                                             calories = set.calories?.toString().orEmpty(),
                                             isWarmup = set.isWarmup,
                                             note = set.note.orEmpty(),
@@ -219,6 +229,8 @@ init {
         viewModelScope.launch {
             _state.update { it.copy(isSaving = true, errorMessage = null) }
             val fmt = prefsRepository.dateFormat.firstOrNull() ?: "dd/MM/yyyy"
+            val unit = prefsRepository.weightUnit.firstOrNull() ?: "kg"
+            val distUnit = prefsRepository.distanceUnit.firstOrNull() ?: "km"
             runCatching {
                 repository.upsertWithDetails(
                     WorkoutWithDetails(
@@ -255,9 +267,9 @@ init {
                                         workoutExerciseId = exerciseId,
                                         setNumber = setIndex + 1,
                                         reps = set.reps.toIntOrNull(),
-                                        weight = set.weight.toDoubleOrNull(),
+                                        weight = set.weight.toDoubleOrNull()?.let { displayUnitToKg(it, unit) },
                                         durationSec = set.durationSec.toIntOrNull(),
-                                        distanceMeters = set.distanceMeters.toIntOrNull(),
+                                        distanceMeters = set.distanceMeters.toDoubleOrNull()?.let { displayUnitToMeters(it, distUnit) },
                                         calories = set.calories.toIntOrNull(),
                                         isWarmup = set.isWarmup,
                                         note = set.note.ifBlank { null },
@@ -295,6 +307,23 @@ init {
     }
 
     companion object {
+        fun kgToDisplayUnit(kg: Double, unit: String): String {
+            val value = if (unit == "lbs") kg * 2.20462 else kg
+            return if (value == value.toLong().toDouble()) value.toLong().toString()
+                   else "%.1f".format(value)
+        }
+
+        fun displayUnitToKg(value: Double, unit: String): Double =
+            if (unit == "lbs") value * 0.453592 else value
+
+        fun metersToDisplayUnit(meters: Int, unit: String): String {
+            val value = if (unit == "miles") meters / 1609.344 else meters / 1000.0
+            return "%.2f".format(value)
+        }
+
+        fun displayUnitToMeters(value: Double, unit: String): Int =
+            if (unit == "miles") (value * 1609.344).toInt() else (value * 1000).toInt()
+
         fun isoToDisplay(isoDate: String, pattern: String): String =
             runCatching {
                 LocalDate.parse(isoDate, DateTimeFormatter.ISO_LOCAL_DATE)
