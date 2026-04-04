@@ -114,6 +114,8 @@ fun WorkoutNavGraph(
                 },
                 onSettings = { navController.navigate(ROUTE_SETTINGS) },
                 onBodyMeasurements = { navController.navigate(ROUTE_BODY) },
+                onDeleteWorkout = { homeViewModel.deleteWorkout(it) },
+                onUndoDelete = { homeViewModel.undoDelete(it) }
                 onProfile = { navController.navigate(ROUTE_PROFILE) },
                 onBackupRestore = { navController.navigate(ROUTE_BACKUP) }
             )

@@ -1,7 +1,10 @@
 package com.evangelidisapps.ttworkoutlog.ui.home
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -11,9 +14,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DrawerValue
@@ -26,17 +31,27 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.evangelidisapps.ttworkoutlog.data.model.Workout
 import com.evangelidisapps.ttworkoutlog.ui.theme.TTWorkoutLogTheme
@@ -55,12 +70,29 @@ fun HomeScreen(
     onLogin: () -> Unit,
     onSettings: () -> Unit,
     onBodyMeasurements: () -> Unit,
+    onDeleteWorkout: (Workout) -> Unit,
+    onUndoDelete: (Workout) -> Unit,
     onProfile: () -> Unit,
     onBackupRestore: () -> Unit,
     onWorkoutClick: (Workout) -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    fun handleSwipeDelete(workout: Workout) {
+        onDeleteWorkout(workout)
+        scope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = "\"${workout.title}\" deleted",
+                actionLabel = "Undo",
+                duration = SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                onUndoDelete(workout)
+            }
+        }
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -123,26 +155,30 @@ fun HomeScreen(
                 FloatingActionButton(onClick = onAddWorkout) {
                     Text("+")
                 }
-            }
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { innerPadding ->
             HomeContent(
                 paddingValues = innerPadding,
                 workouts = workouts,
                 userName = userName,
                 dateFormat = dateFormat,
-                onWorkoutClick = onWorkoutClick
+                onWorkoutClick = onWorkoutClick,
+                onSwipeDelete = ::handleSwipeDelete
             )
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeContent(
     paddingValues: PaddingValues,
     workouts: List<Workout>,
     userName: String?,
     dateFormat: String,
-    onWorkoutClick: (Workout) -> Unit
+    onWorkoutClick: (Workout) -> Unit,
+    onSwipeDelete: (Workout) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -171,9 +207,69 @@ private fun HomeContent(
             }
         } else {
             items(workouts, key = { it.id }) { workout ->
-                WorkoutCard(workout, dateFormat, onWorkoutClick)
+                SwipeToDeleteWorkoutCard(
+                    workout = workout,
+                    dateFormat = dateFormat,
+                    onWorkoutClick = onWorkoutClick,
+                    onDelete = { onSwipeDelete(workout) }
+                )
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeToDeleteWorkoutCard(
+    workout: Workout,
+    dateFormat: String,
+    onWorkoutClick: (Workout) -> Unit,
+    onDelete: () -> Unit
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { it != SwipeToDismissBoxValue.Settled },
+        positionalThreshold = { totalDistance -> totalDistance * 0.35f }
+    )
+
+    LaunchedEffect(dismissState.currentValue) {
+        if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
+            onDelete()
+        }
+    }
+
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = true,
+        enableDismissFromEndToStart = true,
+        backgroundContent = {
+            val targetColor by animateColorAsState(
+                targetValue = when (dismissState.targetValue) {
+                    SwipeToDismissBoxValue.Settled -> MaterialTheme.colorScheme.surface
+                    else -> MaterialTheme.colorScheme.errorContainer
+                },
+                label = "swipe_bg_color"
+            )
+            val alignment = when (dismissState.targetValue) {
+                SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+                SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+                SwipeToDismissBoxValue.Settled -> Alignment.Center
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(targetColor, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 20.dp),
+                contentAlignment = alignment
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete workout",
+                    tint = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        }
+    ) {
+        WorkoutCard(workout = workout, dateFormat = dateFormat, onWorkoutClick = onWorkoutClick)
     }
 }
 
@@ -226,9 +322,7 @@ private fun DrawerContent(
         DrawerItem(label = "Backup & Restore", action = onBackupRestore),
         DrawerItem(label = "Settings", action = onSettings)
     )
-    Column(
-        modifier = Modifier.padding(horizontal = 12.dp)
-    ) {
+    Column(modifier = Modifier.padding(horizontal = 12.dp)) {
         Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = "Menu",
@@ -266,18 +360,8 @@ private fun HomeScreenPreview() {
             isSignedIn = true,
             isGuest = false,
             workouts = listOf(
-                Workout(
-                    id = "1",
-                    title = "Push Day",
-                    dateLabel = "2024-10-01",
-                    note = "Bench / OHP / Dips"
-                ),
-                Workout(
-                    id = "2",
-                    title = "Legs",
-                    dateLabel = "2024-09-30",
-                    note = "Squat / RDL / Lunges"
-                )
+                Workout(id = "1", title = "Push Day", dateLabel = "2024-10-01", note = "Bench / OHP / Dips"),
+                Workout(id = "2", title = "Legs", dateLabel = "2024-09-30", note = "Squat / RDL / Lunges")
             ),
             onAddWorkout = {},
             onLogout = {},
@@ -286,6 +370,8 @@ private fun HomeScreenPreview() {
             onBodyMeasurements = {},
             onProfile = {},
             onBackupRestore = {},
+            onDeleteWorkout = {},
+            onUndoDelete = {},
             onWorkoutClick = {}
         )
     }

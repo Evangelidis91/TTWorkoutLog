@@ -77,4 +77,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             repository.delete(workout)
         }
     }
+
+    fun undoDelete(workout: Workout) {
+        viewModelScope.launch {
+            repository.upsert(workout)
+        }
+    }
 }
