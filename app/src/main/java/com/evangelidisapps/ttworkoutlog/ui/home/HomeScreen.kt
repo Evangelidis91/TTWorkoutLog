@@ -55,6 +55,7 @@ fun HomeScreen(
     onLogin: () -> Unit,
     onSettings: () -> Unit,
     onBodyMeasurements: () -> Unit,
+    onProfile: () -> Unit,
     onWorkoutClick: (Workout) -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -82,6 +83,10 @@ fun HomeScreen(
                     onBodyMeasurements = {
                         scope.launch { drawerState.close() }
                         onBodyMeasurements()
+                    },
+                    onProfile = {
+                        scope.launch { drawerState.close() }
+                        onProfile()
                     }
                 )
             }
@@ -202,21 +207,17 @@ private fun DrawerContent(
     onLogin: () -> Unit,
     onLogout: () -> Unit,
     onSettings: () -> Unit,
-    onBodyMeasurements: () -> Unit
+    onBodyMeasurements: () -> Unit,
+    onProfile: () -> Unit
 ) {
     val items = listOf(
+        DrawerItem(label = "Profile", action = onProfile),
         DrawerItem(
             label = if (isSignedIn && !isGuest) "Logout" else "Login",
             action = if (isSignedIn && !isGuest) onLogout else onLogin
         ),
-        DrawerItem(
-            label = "Body measurements",
-            action = onBodyMeasurements
-        ),
-        DrawerItem(
-            label = "Settings",
-            action = onSettings
-        )
+        DrawerItem(label = "Body measurements", action = onBodyMeasurements),
+        DrawerItem(label = "Settings", action = onSettings)
     )
     Column(
         modifier = Modifier.padding(horizontal = 12.dp)
@@ -276,6 +277,7 @@ private fun HomeScreenPreview() {
             onLogin = {},
             onSettings = {},
             onBodyMeasurements = {},
+            onProfile = {},
             onWorkoutClick = {}
         )
     }

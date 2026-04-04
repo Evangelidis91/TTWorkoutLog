@@ -66,4 +66,13 @@ interface WorkoutDao {
 
     @Query("DELETE FROM exercises")
     suspend fun deleteAllExercises()
+
+    @Query("SELECT COUNT(*) FROM workouts")
+    fun observeTotalWorkouts(): Flow<Int>
+
+    @Query(
+        "SELECT COALESCE(SUM(weight * reps), 0.0) FROM workout_sets " +
+        "WHERE isWarmup = 0 AND weight IS NOT NULL AND reps IS NOT NULL"
+    )
+    fun observeTotalVolumeKg(): Flow<Double>
 }

@@ -41,6 +41,10 @@ class WorkoutRepository(
     fun observeWorkoutsWithDetails(): Flow<List<WorkoutWithDetails>> =
         workoutDao.observeWorkoutsWithDetails().map { list -> list.map { it.toDomain() } }
 
+    fun observeTotalWorkouts(): Flow<Int> = workoutDao.observeTotalWorkouts()
+
+    fun observeTotalVolumeKg(): Flow<Double> = workoutDao.observeTotalVolumeKg()
+
     suspend fun upsert(workout: Workout) {
         workoutDao.upsert(workout.toEntity())
     }
