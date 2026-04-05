@@ -75,4 +75,34 @@ interface WorkoutDao {
         "WHERE isWarmup = 0 AND weight IS NOT NULL AND reps IS NOT NULL"
     )
     fun observeTotalVolumeKg(): Flow<Double>
+
+    // ── Exercise catalog ──────────────────────────────────────────────────────
+
+    @Query("SELECT COUNT(*) FROM catalog_exercises")
+    suspend fun getCatalogCount(): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertCatalogExercises(exercises: List<CatalogExerciseEntity>)
+
+    @Query("""
+        SELECT * FROM catalog_exercises
+        WHERE (:query = '' OR name LIKE '%' || :query || '%')
+        AND (:equipment IS NULL OR equipment = :equipment)
+        AND (:muscle IS NULL OR primaryMuscles LIKE '%' || :muscle || '%')
+        AND (:category IS NULL OR category = :category)
+        ORDER BY name ASC
+        LIMIT 100
+    """)
+    fun searchCatalog(
+        query: String,
+        equipment: String?,
+        muscle: String?,
+        category: String?
+    ): Flow<List<CatalogExerciseEntity>>
+
+    @Query("SELECT DISTINCT equipment FROM catalog_exercises WHERE equipment IS NOT NULL ORDER BY equipment ASC")
+    suspend fun getDistinctEquipment(): List<String>
+
+    @Query("SELECT DISTINCT category FROM catalog_exercises ORDER BY category ASC")
+    suspend fun getDistinctCategories(): List<String>
 }

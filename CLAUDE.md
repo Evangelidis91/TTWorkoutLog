@@ -111,6 +111,38 @@ Defined in `WorkoutNavGraph.kt`:
 - `settings` — Settings
 - `body` — Body measurements
 
+## Feature Roadmap
+
+### Shipped
+- Weight unit toggle (kg / lbs) — settings + display throughout
+- Distance unit toggle (km / miles) — settings + display throughout
+- 1RM calculator — tap a set on the detail screen for Epley & Brzycki estimates
+- Profile screen — display name, photo (Coil + initials fallback), total workouts, total volume stats
+- Backup & restore — manual JSON export/import via Android Storage Access Framework (Gson)
+- Swipe to delete workouts — SwipeToDismissBox with undo snackbar
+- Search & filter workouts — by title, style (FilterChip), and date range (DatePickerDialog)
+
+### Planned — Exercise Database (free-exercise-db, ~800 exercises)
+Integration approach: bundle `exercises.json` as a raw asset, load into a Room table on first launch — fully offline, no network dependency. Images fetched lazily from GitHub CDN.
+
+**High priority**
+- Exercise picker with search — browse/search the catalog when adding an exercise instead of typing freehand; filter by equipment, muscle group, or category
+- Exercise detail sheet — tap any exercise to see primary/secondary muscles, step-by-step instructions, and exercise image
+- Muscle group summary on workout — auto-derive which muscle groups a workout hit from the logged exercises
+
+**Medium priority**
+- Suggest a workout by muscle group — pick target muscles → get matching exercises from the DB to add
+- Equipment filter — user declares available equipment; only matching exercises shown
+- Exercise difficulty badge — beginner / intermediate / expert tag from the `level` field
+- Push/pull/legs auto-tagging — derive a muscle split label for each workout from `force` + `primaryMuscles`
+- Personal records per exercise — track heaviest set and best estimated 1RM per canonical exercise ID across all workouts
+- Exercise history — tap an exercise in the catalog to see every session it was logged with volume/weight over time
+- "Haven't trained X in N days" nudge — surface muscles or exercises absent from recent workouts
+
+**Lower priority**
+- Auto-fill workout style — map exercise category (e.g., "cardio") to a default workout style on add
+- Secondary muscles heatmap — body map diagram shaded by muscles hit across the current week
+
 ## Key Technical Details
 
 - **Package**: `com.evangelidisapps.ttworkoutlog`

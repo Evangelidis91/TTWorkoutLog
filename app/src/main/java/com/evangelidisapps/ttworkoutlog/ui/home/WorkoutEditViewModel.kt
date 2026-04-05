@@ -5,11 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
+import com.evangelidisapps.ttworkoutlog.data.model.CatalogExercise
 import com.evangelidisapps.ttworkoutlog.data.model.Exercise
 import com.evangelidisapps.ttworkoutlog.data.model.Workout
 import com.evangelidisapps.ttworkoutlog.data.model.WorkoutExercise
 import com.evangelidisapps.ttworkoutlog.data.model.WorkoutSet
 import com.evangelidisapps.ttworkoutlog.data.model.WorkoutWithDetails
+import com.evangelidisapps.ttworkoutlog.data.repository.ExerciseCatalogRepository
 import com.evangelidisapps.ttworkoutlog.data.repository.UserPreferencesRepository
 import com.evangelidisapps.ttworkoutlog.data.repository.WorkoutRepository
 import java.time.LocalDate
@@ -18,6 +20,7 @@ import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -45,6 +48,13 @@ data class EditableExerciseState(
     val sets: List<EditableSetState> = listOf(EditableSetState())
 )
 
+data class CatalogFilter(
+    val query: String = "",
+    val equipment: String? = null,
+    val muscle: String? = null,
+    val category: String? = null
+)
+
 data class WorkoutEditState(
     val workoutId: String = UUID.randomUUID().toString(),
     val title: String = "",
@@ -57,12 +67,14 @@ data class WorkoutEditState(
     val exercises: List<EditableExerciseState> = emptyList(),
     val isSaving: Boolean = false,
     val saved: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val showExercisePicker: Boolean = false
 )
 
 class WorkoutEditViewModel(
     private val repository: WorkoutRepository,
     private val prefsRepository: UserPreferencesRepository,
+    private val catalogRepository: ExerciseCatalogRepository,
     private val existingWorkoutId: String?
 ) : ViewModel() {
 
@@ -75,7 +87,43 @@ class WorkoutEditViewModel(
     val distanceUnit = prefsRepository.distanceUnit
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "km")
 
-init {
+    // ── Exercise catalog picker ───────────────────────────────────────────────
+
+    private val _catalogFilter = MutableStateFlow(CatalogFilter())
+    val catalogFilter = _catalogFilter.asStateFlow()
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val catalogResults = _catalogFilter
+        .flatMapLatest { f ->
+            catalogRepository.search(f.query, f.equipment, f.muscle, f.category)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+        fun openExercisePicker() = _state.update { it.copy(showExercisePicker = true) }
+    fun closeExercisePicker() = _state.update { it.copy(showExercisePicker = false) }
+
+    fun setCatalogQuery(query: String) = _catalogFilter.update { it.copy(query = query) }
+    fun setCatalogEquipment(equipment: String?) = _catalogFilter.update { it.copy(equipment = equipment) }
+    fun setCatalogMuscle(muscle: String?) = _catalogFilter.update { it.copy(muscle = muscle) }
+    fun setCatalogCategory(category: String?) = _catalogFilter.update { it.copy(category = category) }
+    fun clearCatalogFilters() { _catalogFilter.value = CatalogFilter() }
+
+    fun addExerciseFromCatalog(exercise: CatalogExercise) {
+        _state.update { current ->
+            current.copy(
+                exercises = current.exercises + EditableExerciseState(
+                    id = UUID.randomUUID().toString(),
+                    name = exercise.name,
+                    muscleGroup = exercise.primaryMuscles.firstOrNull().orEmpty(),
+                    sets = listOf(EditableSetState(setNumber = 1))
+                ),
+                showExercisePicker = false
+            )
+        }
+        _catalogFilter.value = CatalogFilter()
+    }
+
+    init {
         if (!existingWorkoutId.isNullOrBlank()) {
             viewModelScope.launch {
                 val fmt = prefsRepository.dateFormat.firstOrNull() ?: "dd/MM/yyyy"
@@ -349,8 +397,9 @@ init {
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
                 val repo = WorkoutRepository.create(app)
                 val prefsRepo = UserPreferencesRepository(app)
+                val catalogRepo = ExerciseCatalogRepository(app)
                 @Suppress("UNCHECKED_CAST")
-                return WorkoutEditViewModel(repo, prefsRepo, workoutId) as T
+                return WorkoutEditViewModel(repo, prefsRepo, catalogRepo, workoutId) as T
             }
         }
     }
