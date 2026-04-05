@@ -41,7 +41,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
@@ -49,8 +48,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import com.evangelidisapps.ttworkoutlog.ui.theme.AppBottomSheet
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -365,11 +364,8 @@ private fun ExercisePickerSheet(
     onViewDetail: (CatalogExercise) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState
+    AppBottomSheet(
+        onDismissRequest = onDismiss
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
             Text(
@@ -632,11 +628,8 @@ private fun ExerciseDetailSheet(
     onAddToWorkout: (CatalogExercise) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState
+    AppBottomSheet(
+        onDismissRequest = onDismiss
     ) {
         LazyColumn(
             modifier = Modifier.padding(horizontal = 16.dp),

@@ -28,13 +28,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberModalBottomSheetState
+import com.evangelidisapps.ttworkoutlog.ui.theme.AppBottomSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -145,10 +144,8 @@ fun BodyMeasurementsScreen(
     }
 
     if (state.showForm) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
-            onDismissRequest = { viewModel.closeForm() },
-            sheetState = sheetState
+        AppBottomSheet(
+            onDismissRequest = { viewModel.closeForm() }
         ) {
             MeasurementForm(
                 form = state.form,

@@ -64,6 +64,7 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.play.services.auth)
     implementation(libs.facebook.login)
     implementation(libs.coil.compose)

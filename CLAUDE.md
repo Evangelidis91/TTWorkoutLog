@@ -160,6 +160,9 @@ Defined in `WorkoutNavGraph.kt`:
 - [x] Profile screen — display name, photo, stats summary (total workouts, total volume)
 - [ ] Export workout — share a workout as formatted text or PDF
 - [x] Backup & restore — manual JSON export/import via Android Storage Access Framework
+- [ ] Public workout sharing — user can publish a workout to a public feed; other users can browse and follow/clone it into their own log
+- [ ] Ads integration — show banner/interstitial ads (AdMob) for free users; in-app purchase to permanently remove ads
+- [ ] Subscription / premium plans — monthly/annual sub (Google Play Billing) unlocks curated premium workout plans; free tier keeps personal logging unlimited
 
 ---
 
@@ -199,6 +202,29 @@ Data is fetched from GitHub CDN on first launch and cached in Room. Images fetch
 **Lower priority**
 - Auto-fill workout style — map exercise category (e.g., "cardio") to a default workout style on add
 - Secondary muscles heatmap — body map diagram shaded by muscles hit across the current week
+
+### Planned — Monetisation & Social
+
+**Public workout sharing**
+- Add `isPublic: Boolean` flag to `WorkoutEntity`/`Workout` + Firestore document
+- Public workouts written to a top-level `public_workouts/{workoutId}` Firestore collection (in addition to the user's own path)
+- `PublicFeedRepository` pages through `public_workouts` ordered by timestamp; `PublicFeedScreen` + `PublicFeedViewModel`
+- "Follow" stores the source `workoutId` reference; cloning creates a new local copy with fresh UUIDs (same flow as templates)
+- Moderation: Firestore Security Rules restrict writes to authenticated non-guest users; report flag stored on the document
+
+**Ads (AdMob)**
+- Dependency: `com.google.android.gms:play-services-ads`
+- Banner ad shown at the bottom of `HomeScreen` for free users
+- Interstitial shown after every 5th workout save
+- `UserPreferencesRepository` stores `IS_AD_FREE: Boolean` (DataStore); set to `true` on successful purchase
+- AdMob App ID added to `AndroidManifest.xml` via `<meta-data>`
+
+**In-app purchases & subscriptions (Google Play Billing)**
+- Dependency: `com.android.billingclient:billing-ktx`
+- `BillingRepository` wraps `BillingClient`; exposes `purchaseFlow` and `subscriptionFlow` as `StateFlow`
+- Two SKUs: `remove_ads` (one-time), `premium_monthly` / `premium_annual` (subscriptions)
+- Premium unlocks: ad-free experience + access to curated `PremiumPlanScreen` (pre-built multi-week workout programs stored in Firestore under `premium_plans/`)
+- Purchase state persisted in DataStore and validated server-side via Firebase Functions + Google Play Developer API
 
 ## Key Technical Details
 

@@ -6,4 +6,11 @@
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
     </style>
+
+    <style name="Theme.TTWorkoutLog.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#1C1B1F</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/splash_icon_background</item>
+        <item name="postSplashScreenTheme">@style/Theme.TTWorkoutLog</item>
+    </style>
 </resources>

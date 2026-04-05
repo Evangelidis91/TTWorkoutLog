@@ -28,14 +28,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
+import com.evangelidisapps.ttworkoutlog.ui.theme.AppBottomSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -494,16 +493,14 @@ private fun OneRepMaxBottomSheet(
     weightUnit: String,
     onDismiss: () -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val weight = set.weight!!
     val reps = set.reps!!
 
     val epley = calc1RMEpley(weight, reps)
     val brzycki = if (reps < 37) calc1RMBrzycki(weight, reps) else null
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState
+    AppBottomSheet(
+        onDismissRequest = onDismiss
     ) {
         Column(
             modifier = Modifier
