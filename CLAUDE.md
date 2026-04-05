@@ -205,7 +205,7 @@ Data is fetched from GitHub CDN on first launch and cached in Room. Images fetch
 - **Package**: `com.evangelidisapps.ttworkoutlog`
 - **Min SDK**: 28 (Android 9)
 - **Target SDK**: 36
-- **Kotlin**: 2.0.21 with Compose compiler plugin (KSP 2.0.21-1.0.25)
+- **Kotlin**: 2.2.0 with Compose compiler plugin (KSP 2.2.0-1.0.29)
 - **Room**: 2.6.1 with KSP for annotation processing (DB version 3)
 - **Compose BOM**: 2024.09.00
 - **DataStore**: 1.0.0
