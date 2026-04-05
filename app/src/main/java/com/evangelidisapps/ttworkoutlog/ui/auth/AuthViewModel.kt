@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.evangelidisapps.ttworkoutlog.data.repository.UserPreferencesRepository
 import com.evangelidisapps.ttworkoutlog.data.repository.WorkoutRepository
 import com.facebook.AccessToken
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.logEvent
 import com.google.firebase.auth.FacebookAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -33,6 +35,7 @@ data class AuthUiState(
 class AuthViewModel(application: Application) : ViewModel() {
 
     private val auth: FirebaseAuth? = runCatching { Firebase.auth }.getOrNull()
+    private val analytics = runCatching { FirebaseAnalytics.getInstance(application) }.getOrNull()
     private val prefs = UserPreferencesRepository(application)
     private val workoutRepo = WorkoutRepository.create(application)
 
@@ -64,7 +67,12 @@ class AuthViewModel(application: Application) : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             runCatching { authInstance.signInWithEmailAndPassword(email, password).await() }
-                .onSuccess { result -> result.user?.let { onSignInSuccess(it) } }
+                .onSuccess { result ->
+                    analytics?.logEvent(FirebaseAnalytics.Event.LOGIN) {
+                        param(FirebaseAnalytics.Param.METHOD, "email")
+                    }
+                    result.user?.let { onSignInSuccess(it) }
+                }
                 .onFailure { setError(it) }
         }
     }
@@ -82,7 +90,12 @@ class AuthViewModel(application: Application) : ViewModel() {
                 }
                 result
             }
-                .onSuccess { result -> result.user?.let { onSignInSuccess(it) } }
+                .onSuccess { result ->
+                    analytics?.logEvent(FirebaseAnalytics.Event.SIGN_UP) {
+                        param(FirebaseAnalytics.Param.METHOD, "email")
+                    }
+                    result.user?.let { onSignInSuccess(it) }
+                }
                 .onFailure { setError(it) }
         }
     }
@@ -95,7 +108,14 @@ class AuthViewModel(application: Application) : ViewModel() {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             val credential = GoogleAuthProvider.getCredential(idToken, null)
             runCatching { authInstance.signInWithCredential(credential).await() }
-                .onSuccess { result -> result.user?.let { onSignInSuccess(it) } }
+                .onSuccess { result ->
+                    val event = if (result.additionalUserInfo?.isNewUser == true)
+                        FirebaseAnalytics.Event.SIGN_UP else FirebaseAnalytics.Event.LOGIN
+                    analytics?.logEvent(event) {
+                        param(FirebaseAnalytics.Param.METHOD, "google")
+                    }
+                    result.user?.let { onSignInSuccess(it) }
+                }
                 .onFailure { setError(it) }
         }
     }
@@ -108,7 +128,14 @@ class AuthViewModel(application: Application) : ViewModel() {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             val credential = FacebookAuthProvider.getCredential(accessToken.token)
             runCatching { authInstance.signInWithCredential(credential).await() }
-                .onSuccess { result -> result.user?.let { onSignInSuccess(it) } }
+                .onSuccess { result ->
+                    val event = if (result.additionalUserInfo?.isNewUser == true)
+                        FirebaseAnalytics.Event.SIGN_UP else FirebaseAnalytics.Event.LOGIN
+                    analytics?.logEvent(event) {
+                        param(FirebaseAnalytics.Param.METHOD, "facebook")
+                    }
+                    result.user?.let { onSignInSuccess(it) }
+                }
                 .onFailure { setError(it) }
         }
     }
@@ -116,6 +143,7 @@ class AuthViewModel(application: Application) : ViewModel() {
     // ── Guest ────────────────────────────────────────────────────────────────
 
     fun continueAsGuest() {
+        analytics?.logEvent("guest_session_started", null)
         viewModelScope.launch {
             prefs.setOnboardingCompleted(isGuest = true)
             _uiState.value = AuthUiState(
@@ -137,6 +165,9 @@ class AuthViewModel(application: Application) : ViewModel() {
     // ── Internal ─────────────────────────────────────────────────────────────
 
     private suspend fun onSignInSuccess(user: FirebaseUser) {
+        if (_uiState.value.isGuest) {
+            analytics?.logEvent("guest_converted", null)
+        }
         prefs.setOnboardingCompleted(isGuest = false)
 
         // Upload any local guest data to Firestore

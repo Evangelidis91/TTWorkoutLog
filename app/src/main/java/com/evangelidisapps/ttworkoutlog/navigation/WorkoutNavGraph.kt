@@ -5,6 +5,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.navigation.compose.currentBackStackEntryAsState
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.logEvent
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -50,6 +53,17 @@ fun WorkoutNavGraph(
 ) {
     val navController = rememberNavController()
     val app = LocalContext.current.applicationContext as Application
+    val analytics = FirebaseAnalytics.getInstance(app)
+
+    // ── Screen tracking ───────────────────────────────────────────────────────
+    val currentEntry by navController.currentBackStackEntryAsState()
+    LaunchedEffect(currentEntry?.destination?.route) {
+        currentEntry?.destination?.route?.let { route ->
+            analytics.logEvent(FirebaseAnalytics.Event.SCREEN_VIEW) {
+                param(FirebaseAnalytics.Param.SCREEN_NAME, route.substringBefore("?").substringBefore("/"))
+            }
+        }
+    }
     val authViewModel: AuthViewModel = viewModel(
         factory = AuthViewModel.provideFactory(app)
     )

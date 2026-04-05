@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.logEvent
 import com.evangelidisapps.ttworkoutlog.data.model.CatalogExercise
 import com.evangelidisapps.ttworkoutlog.data.model.Exercise
 import com.evangelidisapps.ttworkoutlog.data.model.Workout
@@ -72,12 +74,15 @@ data class WorkoutEditState(
 )
 
 class WorkoutEditViewModel(
+    app: Application,
     private val repository: WorkoutRepository,
     private val prefsRepository: UserPreferencesRepository,
     private val catalogRepository: ExerciseCatalogRepository,
     private val existingWorkoutId: String?,
     private val templateId: String? = null
 ) : ViewModel() {
+
+    private val analytics = FirebaseAnalytics.getInstance(app)
 
     private val _state = MutableStateFlow(WorkoutEditState())
     val state = _state.asStateFlow()
@@ -110,13 +115,55 @@ class WorkoutEditViewModel(
         _catalogFilter.value = CatalogFilter()
     }
 
-    fun openExerciseDetail(exercise: CatalogExercise) { _selectedExerciseDetail.value = exercise }
+    fun openExerciseDetail(exercise: CatalogExercise) {
+        _selectedExerciseDetail.value = exercise
+        analytics.logEvent("exercise_detail_viewed") {
+            param("exercise_id", exercise.id)
+            param("exercise_name", exercise.name)
+            param("category", exercise.category)
+            param("equipment", exercise.equipment ?: "none")
+            param("primary_muscle", exercise.primaryMuscles.firstOrNull() ?: "none")
+        }
+    }
     fun closeExerciseDetail() { _selectedExerciseDetail.value = null }
 
-    fun setCatalogQuery(query: String) = _catalogFilter.update { it.copy(query = query) }
-    fun setCatalogEquipment(equipment: String?) = _catalogFilter.update { it.copy(equipment = equipment) }
-    fun setCatalogMuscle(muscle: String?) = _catalogFilter.update { it.copy(muscle = muscle) }
-    fun setCatalogCategory(category: String?) = _catalogFilter.update { it.copy(category = category) }
+    fun setCatalogQuery(query: String) {
+        _catalogFilter.update { it.copy(query = query) }
+        // Only log once the user has typed enough to show intent (avoids per-keystroke noise)
+        if (query.length == 3) {
+            analytics.logEvent("catalog_search") {
+                param("query_length", query.length.toLong())
+            }
+        }
+    }
+
+    fun setCatalogEquipment(equipment: String?) {
+        _catalogFilter.update { it.copy(equipment = equipment) }
+        equipment?.let {
+            analytics.logEvent("catalog_filter_equipment") {
+                param("equipment", it)
+            }
+        }
+    }
+
+    fun setCatalogMuscle(muscle: String?) {
+        _catalogFilter.update { it.copy(muscle = muscle) }
+        muscle?.let {
+            analytics.logEvent("catalog_filter_muscle") {
+                param("muscle", it)
+            }
+        }
+    }
+
+    fun setCatalogCategory(category: String?) {
+        _catalogFilter.update { it.copy(category = category) }
+        category?.let {
+            analytics.logEvent("catalog_filter_category") {
+                param("category", it)
+            }
+        }
+    }
+
     fun clearCatalogFilters() { _catalogFilter.value = CatalogFilter() }
 
     fun addExerciseFromCatalog(exercise: CatalogExercise) {
@@ -133,6 +180,13 @@ class WorkoutEditViewModel(
         }
         _selectedExerciseDetail.value = null
         _catalogFilter.value = CatalogFilter()
+        analytics.logEvent("exercise_added") {
+            param("exercise_id", exercise.id)
+            param("exercise_name", exercise.name)
+            param("category", exercise.category)
+            param("equipment", exercise.equipment ?: "none")
+            param("primary_muscle", exercise.primaryMuscles.firstOrNull() ?: "none")
+        }
     }
 
     init {
@@ -144,6 +198,10 @@ class WorkoutEditViewModel(
                 val unit = prefsRepository.weightUnit.firstOrNull() ?: "kg"
                 val distUnit = prefsRepository.distanceUnit.firstOrNull() ?: "km"
                 repository.observeWorkoutWithDetails(templateId).firstOrNull()?.let { details ->
+                    analytics.logEvent("template_used") {
+                        param("exercise_count", details.exercises.size.toLong())
+                        param("style", details.workout.style ?: "Standard")
+                    }
                     val newWorkoutId = UUID.randomUUID().toString()
                     _state.update { current ->
                         current.copy(
@@ -388,6 +446,12 @@ class WorkoutEditViewModel(
                     )
                 )
             }.onSuccess {
+                analytics.logEvent("workout_saved") {
+                    param("style", current.style)
+                    param("exercise_count", current.exercises.size.toLong())
+                    param("set_count", current.exercises.sumOf { it.sets.size }.toLong())
+                    param("is_new", if (current.createdAt == 0L) 1L else 0L)
+                }
                 _state.update { it.copy(isSaving = false, saved = true) }
             }.onFailure { error ->
                 _state.update {
@@ -459,7 +523,7 @@ class WorkoutEditViewModel(
                 val prefsRepo = UserPreferencesRepository(app)
                 val catalogRepo = ExerciseCatalogRepository(app)
                 @Suppress("UNCHECKED_CAST")
-                return WorkoutEditViewModel(repo, prefsRepo, catalogRepo, workoutId, templateId) as T
+                return WorkoutEditViewModel(app, repo, prefsRepo, catalogRepo, workoutId, templateId) as T
             }
         }
     }

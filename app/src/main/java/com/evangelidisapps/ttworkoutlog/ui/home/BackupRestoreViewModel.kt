@@ -6,6 +6,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.evangelidisapps.ttworkoutlog.data.repository.BackupRestoreRepository
 import com.evangelidisapps.ttworkoutlog.data.repository.WorkoutRepository
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.logEvent
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -24,6 +26,7 @@ class BackupRestoreViewModel(application: Application) : AndroidViewModel(applic
         workoutRepository = WorkoutRepository.create(application),
         contentResolver = application.contentResolver
     )
+    private val analytics = FirebaseAnalytics.getInstance(application)
 
     private val _status = MutableStateFlow<BackupRestoreStatus>(BackupRestoreStatus.Idle)
     val status = _status.asStateFlow()
@@ -33,6 +36,9 @@ class BackupRestoreViewModel(application: Application) : AndroidViewModel(applic
             _status.update { BackupRestoreStatus.Loading }
             runCatching { repo.exportToJson(uri) }
                 .onSuccess { count ->
+                    analytics.logEvent("backup_exported") {
+                        param("workout_count", count.toLong())
+                    }
                     _status.update {
                         BackupRestoreStatus.Success("Exported $count workout${if (count == 1) "" else "s"} successfully")
                     }
@@ -50,6 +56,9 @@ class BackupRestoreViewModel(application: Application) : AndroidViewModel(applic
             _status.update { BackupRestoreStatus.Loading }
             runCatching { repo.importFromJson(uri) }
                 .onSuccess { count ->
+                    analytics.logEvent("backup_imported") {
+                        param("workout_count", count.toLong())
+                    }
                     _status.update {
                         BackupRestoreStatus.Success("Restored $count workout${if (count == 1) "" else "s"} successfully")
                     }
