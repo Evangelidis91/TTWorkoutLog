@@ -1,8 +1,10 @@
 package com.evangelidisapps.ttworkoutlog.ui.home
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,10 +13,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -49,11 +56,17 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
@@ -531,8 +544,86 @@ private fun ExercisePickerSheet(
 
 // ── Exercise detail sheet ─────────────────────────────────────────────────────
 
-private fun exerciseImageUrl(exerciseId: String): String =
-    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/$exerciseId/0.jpg"
+private fun exerciseImageUrl(exerciseId: String, index: Int = 0): String =
+    "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/$exerciseId/$index.jpg"
+
+@Composable
+private fun ExerciseImagePager(exerciseId: String, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val maxImages = 4
+    val imageLoadStates = remember(exerciseId) { mutableStateMapOf<Int, Boolean>() }
+
+    LaunchedEffect(exerciseId) {
+        imageLoadStates.clear()
+        val imageLoader = context.imageLoader
+        for (i in 0 until maxImages) {
+            val request = ImageRequest.Builder(context)
+                .data(exerciseImageUrl(exerciseId, i))
+                .size(1, 1)
+                .build()
+            val result = imageLoader.execute(request)
+            if (result is SuccessResult) {
+                imageLoadStates[i] = true
+            } else {
+                imageLoadStates[i] = false
+                break
+            }
+        }
+    }
+
+    val pageCount by remember(exerciseId) {
+        derivedStateOf {
+            var count = 0
+            for (i in 0 until maxImages) {
+                if (imageLoadStates[i] == true) count++ else break
+            }
+            maxOf(1, count)
+        }
+    }
+
+    val primary = MaterialTheme.colorScheme.primary
+    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
+    val pagerState = rememberPagerState(pageCount = { pageCount })
+
+    Column(modifier = modifier) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxWidth()
+        ) { page ->
+            AsyncImage(
+                model = exerciseImageUrl(exerciseId, page),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+                    .clip(RoundedCornerShape(12.dp))
+            )
+        }
+
+        if (pageCount > 1) {
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                repeat(pageCount) { i ->
+                    val selected = pagerState.currentPage == i
+                    Box(
+                        modifier = Modifier
+                            .size(if (selected) 8.dp else 6.dp)
+                            .background(
+                                color = if (selected) primary else surfaceVariant,
+                                shape = CircleShape
+                            )
+                    )
+                    if (i < pageCount - 1) Spacer(Modifier.width(4.dp))
+                }
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -551,16 +642,11 @@ private fun ExerciseDetailSheet(
             modifier = Modifier.padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // ── Image ─────────────────────────────────────────────────────────
+            // ── Image(s) ──────────────────────────────────────────────────────
             item {
-                AsyncImage(
-                    model = exerciseImageUrl(exercise.id),
-                    contentDescription = exercise.name,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(16f / 9f)
-                        .clip(RoundedCornerShape(12.dp))
+                ExerciseImagePager(
+                    exerciseId = exercise.id,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
