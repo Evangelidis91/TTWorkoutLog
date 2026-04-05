@@ -109,6 +109,7 @@ The ViewModel also manages the exercise catalog picker:
 - `_selectedExerciseDetail: MutableStateFlow<CatalogExercise?>` controls the detail sheet layered on top of the picker
 - `addExerciseFromCatalog(exercise)` pre-fills name + first `primaryMuscle`, closes both sheets
 - `init` calls `catalogRepository.loadIfNeeded()` to trigger the first-launch CDN fetch
+- `FirebaseAnalytics` is injected via `app: Application` constructor param; logs `catalog_filter_category`, `catalog_filter_equipment`, `catalog_filter_muscle`, `catalog_search` (at query length 3), `exercise_detail_viewed`, `exercise_added` — all from the ViewModel, never the UI
 
 ### Settings
 
@@ -210,6 +211,6 @@ Data is fetched from GitHub CDN on first launch and cached in Room. Images fetch
 - **DataStore**: 1.0.0
 - **Coil**: 2.7.0 (`coil-compose`) — used for profile photos and exercise catalog images
 - **Gson**: 2.10.1 — used for backup/restore JSON serialization and CDN catalog parsing
-- **Firebase BOM**: 34.11.0 (Auth + Firestore; `-ktx` artifact suffixes removed in BOM 32.5+)
+- **Firebase BOM**: 34.11.0 (Auth + Firestore + Analytics; `-ktx` artifact suffixes removed in BOM 32.5+)
 - **Google Services plugin**: 4.4.4 (generates `default_web_client_id` from `google-services.json`)
 - **Java compatibility**: JVM 11
