@@ -136,6 +136,8 @@ class WorkoutEditViewModel(
     }
 
     init {
+        viewModelScope.launch { catalogRepository.loadIfNeeded() }
+
         if (!templateId.isNullOrBlank()) {
             viewModelScope.launch {
                 val fmt = prefsRepository.dateFormat.firstOrNull() ?: "dd/MM/yyyy"

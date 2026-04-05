@@ -73,7 +73,7 @@ The DAO's `upsertWorkoutWithDetails()` is a `@Transaction` method that atomicall
 
 `CatalogExerciseEntity` stores list fields as pipe-separated strings (`primaryMuscles`, `secondaryMuscles`) and newline-separated strings (`instructions`) to avoid TypeConverters overhead. `ExerciseCatalogRepository` splits them back to `List<String>` when mapping to the `CatalogExercise` domain model.
 
-`ExerciseCatalogRepository.loadIfNeeded()` fetches `exercises.json` from the free-exercise-db GitHub CDN on first launch (when `getCatalogCount() == 0`), parses with Gson, and inserts ~800 exercises with `IGNORE` conflict strategy. `search(query, equipment, muscle, category)` returns a `Flow` via LIKE + IS NULL guards in the DAO.
+`ExerciseCatalogRepository.loadIfNeeded()` fetches `exercises.json` from the free-exercise-db GitHub CDN on first launch (when `getCatalogCount() == 0`), parses with Gson, and inserts ~800 exercises with `IGNORE` conflict strategy. `search(query, equipment, muscle, category)` returns a `Flow` via LIKE + IS NULL guards in the DAO. **Important:** `loadIfNeeded()` must be called unconditionally at the top of `WorkoutEditViewModel.init` (before the templateId/workoutId branches) — omitting it leaves the catalog table empty and search returns nothing.
 
 ### Storage Strategy: Guest vs Logged-In
 
