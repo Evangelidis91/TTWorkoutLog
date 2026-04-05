@@ -205,12 +205,12 @@ Data is fetched from GitHub CDN on first launch and cached in Room. Images fetch
 - **Package**: `com.evangelidisapps.ttworkoutlog`
 - **Min SDK**: 28 (Android 9)
 - **Target SDK**: 36
-- **Kotlin**: 2.2.0 with Compose compiler plugin (KSP 2.2.0-1.0.29)
+- **Kotlin**: 2.0.21 with Compose compiler plugin (KSP 2.0.21-1.0.25)
 - **Room**: 2.6.1 with KSP for annotation processing (DB version 3)
 - **Compose BOM**: 2024.09.00
 - **DataStore**: 1.0.0
 - **Coil**: 2.7.0 (`coil-compose`) — used for profile photos and exercise catalog images
 - **Gson**: 2.10.1 — used for backup/restore JSON serialization and CDN catalog parsing
-- **Firebase BOM**: 34.11.0 (Auth + Firestore + Analytics; `-ktx` artifact suffixes removed in BOM 32.5+)
+- **Firebase BOM**: 33.12.0 (Auth + Firestore + Analytics; `-ktx` artifact suffixes removed in BOM 32.5+; stay on 33.x.x — BOM 34.x.x pulls play-services-measurement 23.x.x compiled with Kotlin 2.2.0 which breaks KSP 2.0.21-1.0.25)
 - **Google Services plugin**: 4.4.4 (generates `default_web_client_id` from `google-services.json`)
 - **Java compatibility**: JVM 11
