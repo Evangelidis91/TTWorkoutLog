@@ -90,6 +90,7 @@ fun HomeScreen(
     onStartDateChange: (LocalDate?) -> Unit = {},
     onEndDateChange: (LocalDate?) -> Unit = {},
     onClearFilters: () -> Unit = {},
+    streakData: StreakData = StreakData(),
     onAddWorkout: () -> Unit,
     onLogout: () -> Unit,
     onLogin: () -> Unit,
@@ -192,6 +193,7 @@ fun HomeScreen(
                 paddingValues = innerPadding,
                 workouts = workouts,
                 userName = userName,
+                streakData = streakData,
                 dateFormat = dateFormat,
                 filter = filter,
                 onSearchQueryChange = onSearchQueryChange,
@@ -212,6 +214,7 @@ private fun HomeContent(
     paddingValues: PaddingValues,
     workouts: List<Workout>,
     userName: String?,
+    streakData: StreakData,
     dateFormat: String,
     filter: WorkoutFilter,
     onSearchQueryChange: (String) -> Unit,
@@ -238,6 +241,10 @@ private fun HomeContent(
                 text = "Here are your recent workouts:",
                 style = MaterialTheme.typography.bodyMedium
             )
+        }
+
+        item {
+            ActivityHeatmapCard(streakData = streakData)
         }
 
         item {
