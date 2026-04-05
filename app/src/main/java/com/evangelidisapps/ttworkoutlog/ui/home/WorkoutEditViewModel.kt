@@ -198,6 +198,10 @@ class WorkoutEditViewModel(
                 val unit = prefsRepository.weightUnit.firstOrNull() ?: "kg"
                 val distUnit = prefsRepository.distanceUnit.firstOrNull() ?: "km"
                 repository.observeWorkoutWithDetails(templateId).firstOrNull()?.let { details ->
+                    analytics.logEvent("template_used") {
+                        param("exercise_count", details.exercises.size.toLong())
+                        param("style", details.workout.style ?: "Standard")
+                    }
                     val newWorkoutId = UUID.randomUUID().toString()
                     _state.update { current ->
                         current.copy(
@@ -442,6 +446,12 @@ class WorkoutEditViewModel(
                     )
                 )
             }.onSuccess {
+                analytics.logEvent("workout_saved") {
+                    param("style", current.style)
+                    param("exercise_count", current.exercises.size.toLong())
+                    param("set_count", current.exercises.sumOf { it.sets.size }.toLong())
+                    param("is_new", if (current.createdAt == 0L) 1L else 0L)
+                }
                 _state.update { it.copy(isSaving = false, saved = true) }
             }.onFailure { error ->
                 _state.update {

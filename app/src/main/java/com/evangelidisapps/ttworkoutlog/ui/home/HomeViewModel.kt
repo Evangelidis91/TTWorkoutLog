@@ -7,6 +7,8 @@ import com.evangelidisapps.ttworkoutlog.data.model.Workout
 import com.evangelidisapps.ttworkoutlog.data.model.WorkoutWithDetails
 import com.evangelidisapps.ttworkoutlog.data.repository.UserPreferencesRepository
 import com.evangelidisapps.ttworkoutlog.data.repository.WorkoutRepository
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.logEvent
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -42,6 +44,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
     private val repository = WorkoutRepository.create(application)
     private val prefsRepo = UserPreferencesRepository(application)
+    private val analytics = FirebaseAnalytics.getInstance(application)
 
     private val _filter = MutableStateFlow(WorkoutFilter())
     val filter = _filter.asStateFlow()
@@ -115,10 +118,34 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     // ── Filter actions ────────────────────────────────────────────────────────
 
-    fun setSearchQuery(query: String) = _filter.update { it.copy(query = query) }
-    fun setStyleFilter(style: String?) = _filter.update { it.copy(style = style) }
-    fun setStartDate(date: LocalDate?) = _filter.update { it.copy(startDate = date) }
-    fun setEndDate(date: LocalDate?) = _filter.update { it.copy(endDate = date) }
+    fun setSearchQuery(query: String) {
+        _filter.update { it.copy(query = query) }
+        if (query.length == 3) {
+            analytics.logEvent("workout_search") {
+                param("query_length", query.length.toLong())
+            }
+        }
+    }
+
+    fun setStyleFilter(style: String?) {
+        _filter.update { it.copy(style = style) }
+        style?.let {
+            analytics.logEvent("workout_filter_style") {
+                param("style", it)
+            }
+        }
+    }
+
+    fun setStartDate(date: LocalDate?) {
+        _filter.update { it.copy(startDate = date) }
+        if (date != null) analytics.logEvent("workout_filter_date_range", null)
+    }
+
+    fun setEndDate(date: LocalDate?) {
+        _filter.update { it.copy(endDate = date) }
+        if (date != null) analytics.logEvent("workout_filter_date_range", null)
+    }
+
     fun clearFilters() { _filter.value = WorkoutFilter() }
 
     // ── Workout actions ───────────────────────────────────────────────────────
@@ -139,6 +166,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun deleteWorkout(workout: Workout) {
+        analytics.logEvent("workout_deleted") {
+            param("style", workout.style ?: "unknown")
+        }
         viewModelScope.launch {
             repository.delete(workout)
         }
@@ -151,6 +181,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun saveAsTemplate(workoutId: String) {
+        analytics.logEvent("template_saved", null)
         viewModelScope.launch {
             repository.saveAsTemplate(workoutId)
         }

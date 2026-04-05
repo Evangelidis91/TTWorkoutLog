@@ -8,6 +8,8 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import com.evangelidisapps.ttworkoutlog.data.model.BodyMeasurement
 import com.evangelidisapps.ttworkoutlog.data.repository.BodyMeasurementRepository
 import com.evangelidisapps.ttworkoutlog.data.repository.UserPreferencesRepository
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.logEvent
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,6 +50,8 @@ class BodyMeasurementsViewModel(
     private val repository: BodyMeasurementRepository,
     private val prefsRepository: UserPreferencesRepository
 ) : AndroidViewModel(app) {
+
+    private val analytics = FirebaseAnalytics.getInstance(app)
 
     private val _state = MutableStateFlow(BodyMeasurementsUiState())
     val state = _state.asStateFlow()
@@ -122,6 +126,10 @@ class BodyMeasurementsViewModel(
             val id = form.editingId ?: UUID.randomUUID().toString()
             val weightKg = form.weight.toDoubleOrNull()?.let { displayToKg(it, unit) }
             val muscleMassKg = form.muscleMass.toDoubleOrNull()?.let { displayToKg(it, unit) }
+            val fieldsFilledCount = listOf(
+                form.weight, form.bodyFat, form.muscleMass, form.bmi,
+                form.waist, form.hip, form.chest, form.arm, form.thigh
+            ).count { it.isNotBlank() }
             repository.upsert(
                 BodyMeasurement(
                     id = id,
@@ -139,6 +147,10 @@ class BodyMeasurementsViewModel(
                     createdAt = System.currentTimeMillis()
                 )
             )
+            analytics.logEvent("measurement_logged") {
+                param("fields_filled", fieldsFilledCount.toLong())
+                param("is_edit", if (form.editingId != null) 1L else 0L)
+            }
             _state.update { it.copy(isSaving = false, showForm = false, form = MeasurementFormState()) }
         }
     }

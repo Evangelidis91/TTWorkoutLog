@@ -8,6 +8,8 @@ import android.content.Intent
 import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.logEvent
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +36,7 @@ class RestTimerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private val _state = MutableStateFlow(RestTimerUiState())
     val state = _state.asStateFlow()
+    private val analytics = FirebaseAnalytics.getInstance(app)
 
     private var countdownJob: Job? = null
 
@@ -45,6 +48,9 @@ class RestTimerViewModel(private val app: Application) : AndroidViewModel(app) {
     fun start(durationSec: Int) {
         cancelAlarm()
         countdownJob?.cancel()
+        analytics.logEvent("rest_timer_started") {
+            param("duration_sec", durationSec.toLong())
+        }
         _state.update { RestTimerUiState(
             remainingSec = durationSec,
             totalSec = durationSec,
@@ -83,6 +89,9 @@ class RestTimerViewModel(private val app: Application) : AndroidViewModel(app) {
             while (_state.value.remainingSec > 0) {
                 delay(1_000L)
                 _state.update { it.copy(remainingSec = it.remainingSec - 1) }
+            }
+            analytics.logEvent("rest_timer_completed") {
+                param("duration_sec", _state.value.totalSec.toLong())
             }
             _state.update { it.copy(isRunning = false, isFinished = true) }
         }
