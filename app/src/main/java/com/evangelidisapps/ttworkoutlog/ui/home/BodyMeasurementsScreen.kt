@@ -110,6 +110,16 @@ fun BodyMeasurementsScreen(
                         dateFormat = dateFormat
                     )
                 }
+                // Progress charts (needs ≥ 2 entries with data)
+                if (state.measurements.size >= 2) {
+                    item {
+                        ProgressChartsCard(
+                            measurements = state.measurements,
+                            weightUnit = weightUnit,
+                            dateFormat = dateFormat
+                        )
+                    }
+                }
                 if (state.measurements.size > 1) {
                     item {
                         Text(
