@@ -75,7 +75,8 @@ class WorkoutEditViewModel(
     private val repository: WorkoutRepository,
     private val prefsRepository: UserPreferencesRepository,
     private val catalogRepository: ExerciseCatalogRepository,
-    private val existingWorkoutId: String?
+    private val existingWorkoutId: String?,
+    private val templateId: String? = null
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(WorkoutEditState())
@@ -135,7 +136,52 @@ class WorkoutEditViewModel(
     }
 
     init {
-        if (!existingWorkoutId.isNullOrBlank()) {
+        if (!templateId.isNullOrBlank()) {
+            viewModelScope.launch {
+                val fmt = prefsRepository.dateFormat.firstOrNull() ?: "dd/MM/yyyy"
+                val unit = prefsRepository.weightUnit.firstOrNull() ?: "kg"
+                val distUnit = prefsRepository.distanceUnit.firstOrNull() ?: "km"
+                repository.observeWorkoutWithDetails(templateId).firstOrNull()?.let { details ->
+                    val newWorkoutId = UUID.randomUUID().toString()
+                    _state.update { current ->
+                        current.copy(
+                            workoutId = newWorkoutId,
+                            title = details.workout.title,
+                            dateLabel = java.time.LocalDate.now()
+                                .format(java.time.format.DateTimeFormatter.ofPattern(fmt)),
+                            note = details.workout.note.orEmpty(),
+                            style = details.workout.style ?: "Standard",
+                            durationSec = "",
+                            calories = "",
+                            createdAt = 0L,
+                            exercises = details.exercises.map { ex ->
+                                EditableExerciseState(
+                                    id = UUID.randomUUID().toString(),
+                                    name = ex.exercise.name,
+                                    muscleGroup = ex.exercise.muscleGroup.orEmpty(),
+                                    note = ex.note.orEmpty(),
+                                    isSuperset = ex.isSuperset,
+                                    sets = ex.sets.map { set ->
+                                        EditableSetState(
+                                            id = UUID.randomUUID().toString(),
+                                            setNumber = set.setNumber,
+                                            reps = set.reps?.toString().orEmpty(),
+                                            weight = set.weight?.let { kgToDisplayUnit(it, unit) }.orEmpty(),
+                                            durationSec = set.durationSec?.toString().orEmpty(),
+                                            distanceMeters = set.distanceMeters?.let { metersToDisplayUnit(it, distUnit) }.orEmpty(),
+                                            calories = set.calories?.toString().orEmpty(),
+                                            isWarmup = set.isWarmup,
+                                            note = set.note.orEmpty(),
+                                            setType = set.setType
+                                        )
+                                    }
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+        } else if (!existingWorkoutId.isNullOrBlank()) {
             viewModelScope.launch {
                 val fmt = prefsRepository.dateFormat.firstOrNull() ?: "dd/MM/yyyy"
                 val unit = prefsRepository.weightUnit.firstOrNull() ?: "kg"
@@ -403,14 +449,15 @@ class WorkoutEditViewModel(
 
         fun provideFactory(
             app: Application,
-            workoutId: String?
+            workoutId: String?,
+            templateId: String? = null
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
                 val repo = WorkoutRepository.create(app)
                 val prefsRepo = UserPreferencesRepository(app)
                 val catalogRepo = ExerciseCatalogRepository(app)
                 @Suppress("UNCHECKED_CAST")
-                return WorkoutEditViewModel(repo, prefsRepo, catalogRepo, workoutId) as T
+                return WorkoutEditViewModel(repo, prefsRepo, catalogRepo, workoutId, templateId) as T
             }
         }
     }

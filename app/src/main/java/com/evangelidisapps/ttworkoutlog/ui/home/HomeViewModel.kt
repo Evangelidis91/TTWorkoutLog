@@ -132,4 +132,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             repository.upsert(workout)
         }
     }
+
+    fun saveAsTemplate(workoutId: String) {
+        viewModelScope.launch {
+            repository.saveAsTemplate(workoutId)
+        }
+    }
 }

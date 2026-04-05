@@ -8,5 +8,6 @@ data class Workout(
     val durationSec: Int? = null,
     val calories: Int? = null,
     val style: String? = null, // e.g., "Standard", "WOD", "Complex", "For Time"
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val isTemplate: Boolean = false
 )
