@@ -27,6 +27,7 @@ import com.evangelidisapps.ttworkoutlog.ui.home.ProfileScreen
 import com.evangelidisapps.ttworkoutlog.ui.home.ProfileViewModel
 import com.evangelidisapps.ttworkoutlog.ui.home.BackupRestoreScreen
 import com.evangelidisapps.ttworkoutlog.ui.home.BackupRestoreViewModel
+import com.evangelidisapps.ttworkoutlog.ui.home.BodyMeasurementsViewModel
 
 private const val ROUTE_AUTH = "auth"
 private const val ROUTE_HOME = "home"
@@ -182,7 +183,13 @@ fun WorkoutNavGraph(
             )
         }
         composable(ROUTE_BODY) {
-            BodyMeasurementsScreen(onBack = { navController.popBackStack() })
+            val bodyViewModel: BodyMeasurementsViewModel = viewModel(
+                factory = BodyMeasurementsViewModel.provideFactory(app)
+            )
+            BodyMeasurementsScreen(
+                viewModel = bodyViewModel,
+                onBack = { navController.popBackStack() }
+            )
         }
         composable(ROUTE_PROFILE) {
             val profileViewModel: ProfileViewModel = viewModel()

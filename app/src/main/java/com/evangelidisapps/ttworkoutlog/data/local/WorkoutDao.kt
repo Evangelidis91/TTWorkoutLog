@@ -105,4 +105,15 @@ interface WorkoutDao {
 
     @Query("SELECT DISTINCT category FROM catalog_exercises ORDER BY category ASC")
     suspend fun getDistinctCategories(): List<String>
+
+    // ── Body measurements ─────────────────────────────────────────────────────
+
+    @Query("SELECT * FROM body_measurements ORDER BY date DESC, createdAt DESC")
+    fun observeBodyMeasurements(): Flow<List<BodyMeasurementEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertBodyMeasurement(measurement: BodyMeasurementEntity)
+
+    @Query("DELETE FROM body_measurements WHERE id = :id")
+    suspend fun deleteBodyMeasurement(id: String)
 }
