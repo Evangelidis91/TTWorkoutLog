@@ -131,7 +131,7 @@ Defined in `WorkoutNavGraph.kt`:
 
 ### Core Functionality
 - [x] Workout templates — save a workout as a template and reuse it (pre-fills exercises/sets)
-- [ ] Rest timer — countdown between sets with a notification when time's up
+- [x] Rest timer — countdown between sets with a notification when time's up
 - [ ] Active workout mode — focused "in progress" screen where you tick off sets one by one, auto-recording timestamp
 - [ ] Personal records (PRs) — detect and highlight when a user hits a new max weight/reps for an exercise
 - [ ] Exercise history — tap an exercise name to see all past performances for that movement (weight progression over time)
@@ -174,6 +174,7 @@ Defined in `WorkoutNavGraph.kt`:
 - Search & filter workouts — by title, style (FilterChip), and date range (DatePickerDialog)
 
 ### Shipped (continued)
+- Rest timer — `RestTimerViewModel` (Activity-scoped via NavGraph) runs countdown in a coroutine; `AlarmManager.setExactAndAllowWhileIdle` schedules a `TimerFinishedReceiver` broadcast at expiry; receiver posts a high-priority notification even when app is backgrounded; `RestTimerSheet` ModalBottomSheet in WorkoutEditScreen (⏱ button in TopAppBar) shows circular progress, preset chips (30s–5m), Start/Pause/Resume/Reset; notification channel created in `MainActivity.onCreate`; permissions: `VIBRATE`, `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`; runtime POST_NOTIFICATIONS prompt on Android 13+
 - Workout templates — `isTemplate: Boolean` flag on `WorkoutEntity`/`Workout`; `WorkoutRepository.saveAsTemplate()` clones a workout with fresh UUIDs and `isTemplate = true`; `TemplatesScreen` + `TemplatesViewModel` list/delete templates; tapping "Use Template" navigates to `workout_edit?templateId=…`; `WorkoutEditViewModel` pre-fills state from template with new IDs and today's date; "Save as template" icon button (♡) on `WorkoutDetailScreen`; `Templates` entry in nav drawer; DB version 5
 - Body measurements — `BodyMeasurementEntity` (body_measurements table, DB v4→v5); `BodyMeasurementRepository`; `BodyMeasurementsViewModel` + `BodyMeasurementsScreen` with latest summary card, history list, edit/delete, and ModalBottomSheet form (weight, body fat %, muscle mass, BMI, waist/hip/chest/arm/thigh); respects kg/lbs pref
 - Exercise picker with search — `ExercisePickerSheet` in `WorkoutEditScreen.kt`; searches `CatalogExerciseEntity` via Room LIKE query; `FilterChip` rows for category, equipment, muscle group
